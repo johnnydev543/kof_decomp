@@ -90,9 +90,16 @@ void ng_shutdown(void);
 /* video.c */
 void video_init(void);
 void video_render_line(int line, uint32_t *fb);
-void video_render_line_hd(int line, uint32_t *out, int scale);   /* S rows of NG_SCREEN_W*S pixels */
-extern uint32_t *ng_hd_fb;      /* when set: --frame-render draws at ng_hd_scale x into it instead of fb */
+/* tagged frames (replacement images at any resolution, see video.c) */
+#define VIDEO_MAX_RECS 255
+struct spr_block;
+typedef struct { const struct spr_block *b; int x0, y0, zoom_x, zoom_y; float scale_x, scale_y; uint32_t fill; } video_rec;
+void video_render_frame(uint32_t *fb);                             /* tagged 1x frame (visible lines) */
+void video_compose(const uint32_t *fb, uint32_t *out, int scale);   /* tagged frame -> colours, S x S */
+int  video_recs(const video_rec **recs, const uint32_t **under);    /* this frame's replacements */
+extern uint32_t *ng_hd_fb;      /* when set: --frame-render composes at ng_hd_scale x into it */
 extern int ng_hd_scale;
+extern int ng_tagged;           /* frame-render keeps fb tagged (the GPU output composes it) */
 void video_update_pen(int bank, int idx);
 
 #endif
