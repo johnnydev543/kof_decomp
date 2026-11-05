@@ -28,11 +28,13 @@ python3 tools/assets/export_audio.py                          # 聲音 -> build/
 ## 3. 執行
 
 ```sh
-build/kof97 --frame-render --native-audio --mods mods/kof97     # 原生聲音 + 你的素材
-make web && make serve                                          # Web 版：建置時會一起打包 mods/kof97
+build/kof97 --hd 4 --native-audio --mods mods/kof97    # 4 倍解析度 + 原生聲音 + 你的素材
+make web && make serve                                 # Web 版：建置時會一起打包 mods/kof97；網址加 ?hd=4
 ```
 
 - `--native-audio`：用預錄的聲音檔（及 `mods/` 的替換檔）播放，不再模擬 Z80 / YM2610。
+- `--hd S`：以 S 倍解析度輸出（例如 4 = 1280×896）。原版圖塊照像素放大，替換圖以完整解析度取樣，所以
+  重繪時放大的細節會保留。
 - `--mods DIR`：替換素材的目錄（預設 `mods/kof97`）；沒有替換檔的動畫格 / 聲音照原版。
 - 目前限制：有縮放（拉近拉遠）的物件仍畫原版圖塊；替換圖以 RGBA 直接繪製，不套用遊戲的調色盤特效
   （受擊閃光、陰影色等）。Web 版的原生聲音需要壓縮格式，尚未完成（Web 版仍用晶片模擬的聲音）。

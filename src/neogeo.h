@@ -90,6 +90,9 @@ void ng_shutdown(void);
 /* video.c */
 void video_init(void);
 void video_render_line(int line, uint32_t *fb);
+void video_render_line_hd(int line, uint32_t *out, int scale);   /* S rows of NG_SCREEN_W*S pixels */
+extern uint32_t *ng_hd_fb;      /* when set: --frame-render draws at ng_hd_scale x into it instead of fb */
+extern int ng_hd_scale;
 void video_update_pen(int bank, int idx);
 
 #endif

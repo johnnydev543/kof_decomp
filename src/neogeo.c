@@ -473,6 +473,8 @@ static void run_cycles(int cycles)
     }
 }
 
+uint32_t *ng_hd_fb;
+int ng_hd_scale = 1;
 int ng_frame_render;        /* 1: render the whole frame at the start of VBlank (--frame-render) */
 
 void ng_run_frame(uint32_t *fb)
@@ -491,7 +493,8 @@ void ng_run_frame(uint32_t *fb)
             /* whole-frame rendering: the frame's final state, after the game logic and before the VBlank
                handler (the native renderer's reference; the per-line renderer also shows mid-frame writes) */
             for (int l = NG_VBEND; l < NG_VBSTART; l++)
-                video_render_line(l, fb + (l - NG_VBEND) * NG_SCREEN_W);
+                if (ng_hd_fb) video_render_line_hd(l, ng_hd_fb + (size_t)(l - NG_VBEND) * NG_SCREEN_W * ng_hd_scale * ng_hd_scale, ng_hd_scale);
+                else video_render_line(l, fb + (l - NG_VBEND) * NG_SCREEN_W);
         }
         if (line == NG_VBSTART) {
             if (ng.irq2_ctrl & 0x40) { slice_len = 0; timer_reload_now(); }

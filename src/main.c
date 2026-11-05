@@ -55,6 +55,7 @@ static void usage(void)
          "                      emulating the Z80 + YM2610 (default DIR build/assets/kof97/audio)\n"
          "  --mods DIR          remade assets (sprites/, audio/) that replace the originals (default mods/kof97)\n"
          "  --sound-log FILE    log every sound command (68k -> Z80) and reply with its frame\n"
+         "  --hd S              render at S x resolution (remade sprites keep their detail; implies --frame-render)\n"
          "  --frame-render      draw each frame at once at the start of VBlank (native renderer reference)\n"
          "  --roms DIR          normalised ROM dir from tools/romprep.py (default build/roms)\n"
          "  --interp            run the 68000 purely on the Musashi interpreter (reference mode)\n"
@@ -209,12 +210,15 @@ static void script_input(int frame, uint8_t *p1, uint8_t *p2, uint8_t *sys)
         }
 }
 
-static void write_ppm(const char *path, const uint32_t *fb)
+/* screenshot of what is shown: the 1x frame buffer, or the --hd buffer */
+static void write_ppm(const char *path, const uint32_t *fb1x)
 {
+    int s = ng_hd_fb ? ng_hd_scale : 1, w = NG_SCREEN_W * s, h = NG_SCREEN_H * s;
+    const uint32_t *fb = ng_hd_fb ? ng_hd_fb : fb1x;
     FILE *f = fopen(path, "wb");
     if (!f) { perror(path); return; }
-    fprintf(f, "P6\n%d %d\n255\n", NG_SCREEN_W, NG_SCREEN_H);
-    for (int i = 0; i < NG_SCREEN_W * NG_SCREEN_H; i++) {
+    fprintf(f, "P6\n%d %d\n255\n", w, h);
+    for (int i = 0; i < w * h; i++) {
         uint8_t px[3] = { (uint8_t)(fb[i] >> 16), (uint8_t)(fb[i] >> 8), (uint8_t)fb[i] };
         fwrite(px, 1, 3, f);
     }
@@ -355,7 +359,7 @@ static void frame_step(void)
             }
         }
     }
-    SDL_UpdateTexture(ui.tex, NULL, fb, NG_SCREEN_W * 4);
+    SDL_UpdateTexture(ui.tex, NULL, ng_hd_fb ? ng_hd_fb : fb, NG_SCREEN_W * ng_hd_scale * 4);
     SDL_RenderClear(ui.ren);
     SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL);
     SDL_RenderPresent(ui.ren);
@@ -383,6 +387,7 @@ int main(int argc, char **argv)
 #define TAKE (v ? (i++, v) : (usage(), exit(1), (const char *)NULL))
         if (!strcmp(a, "--roms")) opt.roms = TAKE;
         else if (!strcmp(a, "--frame-render")) ng_frame_render = 1;
+        else if (!strcmp(a, "--hd")) { ng_hd_scale = atoi(TAKE); ng_frame_render = 1; }
         else if (!strcmp(a, "--sound-log")) sound_log_path = TAKE;
         else if (!strcmp(a, "--native-audio")) native_audio = (i + 1 < argc && argv[i + 1][0] != '-') ? argv[++i] : "build/assets/kof97/audio";
         else if (!strcmp(a, "--mods")) mods_dir = TAKE;
@@ -430,6 +435,8 @@ int main(int argc, char **argv)
     if (opt.script) load_script(opt.script);
     if (opt.autoplay) build_autoplay();
 
+    if (ng_hd_scale < 1 || ng_hd_scale > 8) ng_hd_scale = 1;
+    if (ng_hd_scale > 1) ng_hd_fb = calloc((size_t)NG_SCREEN_W * NG_SCREEN_H * ng_hd_scale * ng_hd_scale, 4);
     if (!ng_load_roms(opt.roms)) return 1;
     if (native_audio && !snd_native_init(native_audio, mods_dir ? mods_dir : "")) return 1;
     if (mods_dir) spr_native_init(mods_dir);
@@ -487,8 +494,9 @@ int main(int argc, char **argv)
     if (!win) { fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
     SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
     if (!ren) ren = SDL_CreateRenderer(win, -1, 0);
-    SDL_RenderSetLogicalSize(ren, NG_SCREEN_W, NG_SCREEN_H);
-    SDL_Texture *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, NG_SCREEN_W, NG_SCREEN_H);
+    SDL_RenderSetLogicalSize(ren, NG_SCREEN_W * ng_hd_scale, NG_SCREEN_H * ng_hd_scale);
+    SDL_Texture *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                         NG_SCREEN_W * ng_hd_scale, NG_SCREEN_H * ng_hd_scale);
 
     SDL_AudioSpec want = { 0 }, have;
     want.freq = AUDIO_RATE; want.format = AUDIO_S16SYS; want.channels = 2; want.samples = 1024;
