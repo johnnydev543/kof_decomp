@@ -6,6 +6,7 @@
 #include <time.h>
 #include "neogeo.h"
 #include "cpu.h"
+#include "bios_hle.h"
 #include "snd_native.h"
 #include "audio.h"
 #include "m68k.h"
@@ -38,13 +39,28 @@ static int load_blob(const char *dir, const char *name, ng_blob *b, int required
     return 1;
 }
 
+/* a ROM the native BIOS (bios_hle.c, level 3) can do without: made up when its file is missing */
+static int load_or_make(const char *dir, const char *name, ng_blob *b, size_t size, void (*make)(uint8_t *, uint32_t))
+{
+    char p[1024];
+    snprintf(p, sizeof p, "%s/%s", dir, name);
+    FILE *f = fopen(p, "rb");
+    if (f || bios_hle_level < 3) { if (f) fclose(f); return load_blob(dir, name, b, 1); }
+    b->data = calloc(size, 1);
+    b->size = size;
+    if (make) make(b->data, (uint32_t)size);
+    fprintf(stderr, "%s: not found, using the native BIOS's stand-in\n", name);
+    return 1;
+}
+static void make_lo(uint8_t *lo, uint32_t size) { (void)size; bios_hle_lo_table(lo); }
+
 int ng_load_roms(const char *dir)
 {
     return load_blob(dir, "p1.bin", &ngr.p1, 1) && load_blob(dir, "p2.bin", &ngr.p2, 0) &&
-           load_blob(dir, "bios.bin", &ngr.bios, 1) && load_blob(dir, "s1.bin", &ngr.s1, 1) &&
-           load_blob(dir, "sfix.bin", &ngr.sfix, 1) && load_blob(dir, "m1.bin", &ngr.m1, 1) &&
-           load_blob(dir, "sm1.bin", &ngr.sm1, 1) && load_blob(dir, "v.bin", &ngr.vrom, 1) &&
-           load_blob(dir, "c.bin", &ngr.crom, 1) && load_blob(dir, "lo.bin", &ngr.lo, 1);
+           load_or_make(dir, "bios.bin", &ngr.bios, 0x20000, bios_hle_make_rom) && load_blob(dir, "s1.bin", &ngr.s1, 1) &&
+           load_or_make(dir, "sfix.bin", &ngr.sfix, 0x20000, NULL) && load_blob(dir, "m1.bin", &ngr.m1, 1) &&
+           load_or_make(dir, "sm1.bin", &ngr.sm1, 0x20000, NULL) && load_blob(dir, "v.bin", &ngr.vrom, 1) &&
+           load_blob(dir, "c.bin", &ngr.crom, 1) && load_or_make(dir, "lo.bin", &ngr.lo, 0x10000, make_lo);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -93,7 +109,8 @@ static void timer_fire(void)
 /* uPD4990A real time clock (MVS calendar)                                                     */
 /* ------------------------------------------------------------------------------------------ */
 
-static uint64_t emu_cycles_now(void) { return ng.total_cycles + (uint64_t)slice_consumed(); }
+/* elapsed time in 12 MHz 68000 cycles (--test-cpu-scale gives the CPU more cycles, not more time) */
+static uint64_t emu_cycles_now(void) { return (ng.total_cycles + (uint64_t)slice_consumed()) / (uint64_t)ng_test_cpu_scale; }
 
 static int rtc_tp(void)
 {
@@ -185,6 +202,11 @@ static uint16_t lspc_read(uint32_t a)
     case 2: return ng.vram_mod;
     default: {
         int v = ng.line + 0x100;
+        if (ng_test_raster) {          /* tests: a value that does not depend on when in the frame it is read */
+            static uint64_t frame; static int reads;
+            if (frame != ng.frame) { frame = ng.frame; reads = 0; }
+            v = 0x100 + (int)((ng.frame * 37 + (uint64_t)(reads++) * 11) % 0xE0) + 0x10;
+        }
         if (v >= 0x200) v -= NG_LINES;
         return (uint16_t)((v << 7) | (ng.auto_anim_counter & 7));
     }
@@ -462,6 +484,7 @@ static void run_cycles(int cycles)
         if (ng.watchdog > NG_WATCHDOG_CYCLES) {
             ng.watchdog = 0;
             ng.watchdog_resets++;
+            if (bios_hle_log) fprintf(stderr, "bios: frame %llu RESET 0 0\n", (unsigned long long)ng.frame);
             ng_reset();
         }
         cycles -= slice;
@@ -478,6 +501,8 @@ int ng_hd_scale = 1;
 int ng_frame_render;        /* 1: render the whole frame at the start of VBlank (--frame-render) */
 int ng_tagged;
 int ng_aes;                 /* home (AES) mode: the game sees BIOS_MVS_FLAG = 0 (--aes) */
+int ng_test_raster;         /* tests: --test-raster */
+int ng_test_cpu_scale = 1;  /* tests: --test-cpu-scale */
 
 void ng_run_frame(uint32_t *fb)
 {
@@ -487,7 +512,7 @@ void ng_run_frame(uint32_t *fb)
             /* home mode: the MVS BIOS sets BIOS_MVS_FLAG ($10FD82) to 1 after its RAM test; once the game's
                vectors are in, clear it every frame so the game runs its home-cartridge code (mode select
                menu, options, no coins) */
-            if (ng_aes && ng.use_cart_vectors) ng.ram[0xfd82] = 0;
+            if (ng_aes && ng.use_cart_vectors && bios_hle_level < 3) ng.ram[0xfd82] = 0;   /* the native BIOS sets it */
             if (ng.auto_anim_frame_counter == 0) {
                 ng.auto_anim_frame_counter = ng.auto_anim_speed;
                 ng.auto_anim_counter++;
@@ -495,24 +520,29 @@ void ng_run_frame(uint32_t *fb)
                 ng.auto_anim_frame_counter--;
             }
         }
+        int tagged = ng_hd_fb || ng_tagged;   /* replacements sampled at full resolution (--hd, GPU) */
         if (line == NG_VBSTART && fb && ng_frame_render) {
-            /* whole-frame rendering: the frame's final state, after the game logic and before the VBlank
-               handler (the native renderer's reference; the per-line renderer also shows mid-frame writes) */
-            if (ng_hd_fb || ng_tagged) {
-                video_render_frame(fb);                    /* tagged: replacements sampled at full resolution */
-                if (ng_hd_fb) video_compose(fb, ng_hd_fb, ng_hd_scale);
-                if (!ng_tagged) video_compose(fb, fb, 1);  /* plain colours for 1x screenshots */
-            } else
-                for (int l = NG_VBEND; l < NG_VBSTART; l++) video_render_line(l, fb + (l - NG_VBEND) * NG_SCREEN_W);
+            /* whole-frame rendering (--frame-render): the frame's final state, after the game logic and before
+               the VBlank handler. Without it each line is drawn when the hardware draws it, so writes the game
+               makes during the picture (blinking text, palette fades, objects moved mid-frame) show as on the
+               hardware. */
+            if (tagged) video_render_frame(fb);
+            else for (int l = NG_VBEND; l < NG_VBSTART; l++) video_render_line(l, fb + (l - NG_VBEND) * NG_SCREEN_W);
+        }
+        if (line == NG_VBSTART && fb && tagged) {
+            if (ng_hd_fb) video_compose(fb, ng_hd_fb, ng_hd_scale);
+            if (!ng_tagged) video_compose(fb, fb, 1);      /* plain colours for 1x screenshots */
         }
         if (line == NG_VBSTART) {
             if (ng.irq2_ctrl & 0x40) { slice_len = 0; timer_reload_now(); }
             ng.irq_vblank = 1;
             update_irq();
         }
-        if (!ng_frame_render && line >= NG_VBEND && line < NG_VBSTART && fb)
-            video_render_line(line, fb + (line - NG_VBEND) * NG_SCREEN_W);
-        run_cycles(NG_CYCLES_PER_LINE);
+        if (!ng_frame_render && line >= NG_VBEND && line < NG_VBSTART && fb) {
+            if (tagged) video_render_line_tagged(line, fb);
+            else video_render_line(line, fb + (line - NG_VBEND) * NG_SCREEN_W);
+        }
+        run_cycles(NG_CYCLES_PER_LINE * ng_test_cpu_scale);
         if (!snd_native_enabled()) audio_run(NG_Z80_CYCLES_PER_LINE);
     }
     ng.frame++;

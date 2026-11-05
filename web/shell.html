@@ -63,6 +63,10 @@
       else if (q.get('gpu') !== '0') a.push('--gpu', '--scale', '4');
       if (q.get('audio') !== 'emu') a.push('--native-audio');
       if (q.get('aes') === '1') a.push('--aes');            /* home (AES) mode: mode select menu, options, no coins */
+      /* the native BIOS (no BIOS ROM, quick start); ?bios=rom runs the BIOS ROM (its F2 menu); ?dip=difficulty=8,...
+         sets soft DIPs (names: kof97 --soft-dip list) */
+      if (q.get('bios') !== 'rom') a.push('--bios-hle', '3');
+      if (q.get('dip')) a.push('--soft-dip', q.get('dip'));
       return a;
     })(),
     setStatus: function (t) { statusEl.textContent = t || 'Click the game to give it the keyboard.'; },

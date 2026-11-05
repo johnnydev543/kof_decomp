@@ -21,8 +21,8 @@
 
 static SDL_Window *win;
 static SDL_GLContext ctx;
-static GLuint prog, vbo, tex_frame, tex_under, tex_delta, tex_recs, tex_atlas;
-static GLint u_frame, u_under, u_delta, u_recs, u_atlas, u_atlas_size, u_shadow, a_pos;
+static GLuint prog, vbo, tex_frame, tex_under, tex_delta, tex_boxpos, tex_recs, tex_atlas;
+static GLint u_frame, u_under, u_delta, u_boxpos, u_recs, u_atlas, u_atlas_size, u_shadow, a_pos;
 static int atlas_size;
 static uint8_t rec_data[VIDEO_MAX_RECS * REC_TEXELS * 4];
 
@@ -48,7 +48,7 @@ static const char *fs_src =
     "precision mediump float;\n"
     "#endif\n"
     "#endif\n"
-    "uniform sampler2D u_frame, u_under, u_delta, u_recs, u_atlas;\n"
+    "uniform sampler2D u_frame, u_under, u_delta, u_boxpos, u_recs, u_atlas;\n"
     "uniform float u_atlas_size, u_shadow;\n"
     "varying vec2 v_pos;\n"
     "vec4 rec(float i, float r) { return texture2D(u_recs, vec2((i + 0.5) / 16.0, (r + 0.5) / 256.0)); }\n"
@@ -63,10 +63,12 @@ static const char *fs_src =
     "    if (t.a > 0.5) { gl_FragColor = vec4(t.bgr, 1.0); return; }\n"
     "    float r = floor(t.r * 255.0 + 0.5);\n"            /* tag: the low byte, first in memory */
     "    vec3 under = texture2D(u_under, tc).bgr;\n"
-    "    vec2 local = mod(v_pos + vec2(0.0, 16.0) - vec2(num(0.0, r), num(1.0, r)) + 512.0, 512.0);\n"
-    "    vec2 f = local * vec2(num(2.0, r), num(3.0, r)) / 65536.0;\n"
+    "    vec4 bp = floor(texture2D(u_boxpos, tc) * 255.0 + 0.5);\n"   /* box pixel the hardware chose */
+    "    vec2 f = vec2(bp.r + bp.g * 256.0, bp.b + bp.a * 256.0) + 0.5;\n"
     "    vec2 box = vec2(num(4.0, r), num(5.0, r));\n"
     "    vec2 img = vec2(num(8.0, r), num(9.0, r));\n"
+    "    bool fine = img.x > box.x + 0.5 || img.y > box.y + 0.5;\n"   /* art above the original resolution */
+    "    if (fine) f += (fract(v_pos) - 0.5) * vec2(num(2.0, r), num(3.0, r)) / 65536.0;\n"
     "    float fl = num(10.0, r);\n"
     "    vec2 u = f / box;\n"
     "    vec4 c = vec4(0.0);\n"
@@ -74,7 +76,7 @@ static const char *fs_src =
     "        if (mod(fl, 2.0) >= 1.0) u.x = 1.0 - u.x;\n"
     "        if (fl >= 2.0) u.y = 1.0 - u.y;\n"
     "        vec2 ip = u * img;\n"
-    "        if (img.x <= box.x + 0.5) ip = floor(ip) + 0.5;\n"   /* original-resolution art stays pixel-sharp */
+    "        if (!fine) ip = floor(ip) + 0.5;\n"                    /* original-resolution art stays pixel-sharp */
     "        ip = clamp(ip, vec2(0.5), img - 0.5);\n"
     "        c = texture2D(u_atlas, (vec2(num(6.0, r), num(7.0, r)) + ip) / u_atlas_size);\n"
     "        vec4 fill = rec(11.0, r);\n"
@@ -153,6 +155,7 @@ int gpu_init(SDL_Window *w)
     u_frame = glGetUniformLocation(prog, "u_frame");
     u_under = glGetUniformLocation(prog, "u_under");
     u_delta = glGetUniformLocation(prog, "u_delta");
+    u_boxpos = glGetUniformLocation(prog, "u_boxpos");
     u_recs = glGetUniformLocation(prog, "u_recs");
     u_atlas = glGetUniformLocation(prog, "u_atlas");
     u_atlas_size = glGetUniformLocation(prog, "u_atlas_size");
@@ -169,6 +172,7 @@ int gpu_init(SDL_Window *w)
     tex_frame = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
     tex_under = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
     tex_delta = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
+    tex_boxpos = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
     tex_recs = make_tex(REC_TEXELS, 256, GL_NEAREST, NULL);
     tex_atlas = make_tex(atlas_size, atlas_size, GL_LINEAR, NULL);
     fprintf(stderr, "gpu: %s, atlas %d\n", (const char *)glGetString(GL_RENDERER), atlas_size);
@@ -221,8 +225,8 @@ static void put24(uint8_t *t, uint32_t v) { t[0] = (uint8_t)v; t[1] = (uint8_t)(
 void gpu_frame(const uint32_t *fb)
 {
     const video_rec *recs;
-    const uint32_t *under, *delta;
-    int n = video_recs(&recs, &under, &delta);
+    const uint32_t *under, *delta, *boxpos;
+    int n = video_recs(&recs, &under, &delta, &boxpos);
     frame_no++;
     glBindTexture(GL_TEXTURE_2D, tex_frame);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, fb);
@@ -231,6 +235,8 @@ void gpu_frame(const uint32_t *fb)
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, under);
     glBindTexture(GL_TEXTURE_2D, tex_delta);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, delta);
+    glBindTexture(GL_TEXTURE_2D, tex_boxpos);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, boxpos);
     for (int pass = 0; pass < 2; pass++) {
         int full = 0;
         for (int i = 0; i < n && !full; i++) {
@@ -280,6 +286,7 @@ void gpu_present(void)
     glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, tex_recs); glUniform1i(u_recs, 2);
     glActiveTexture(GL_TEXTURE3); glBindTexture(GL_TEXTURE_2D, tex_atlas); glUniform1i(u_atlas, 3);
     glActiveTexture(GL_TEXTURE4); glBindTexture(GL_TEXTURE_2D, tex_delta); glUniform1i(u_delta, 4);
+    glActiveTexture(GL_TEXTURE5); glBindTexture(GL_TEXTURE_2D, tex_boxpos); glUniform1i(u_boxpos, 5);
     glActiveTexture(GL_TEXTURE0);
     glUniform1f(u_atlas_size, (float)atlas_size);
     glUniform1f(u_shadow, ng.shadow ? 1.0f : 0.0f);

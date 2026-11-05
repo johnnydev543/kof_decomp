@@ -14,7 +14,7 @@ EMFLAGS := -sUSE_SDL=2
 CFLAGS  := -I$(MUSASHI) -Isrc $(EMFLAGS)
 
 RC_C    := $(foreach i,$(shell seq -w 0 $$(($(NFILES)-1))),$(B)/recomp/rc_$(i).c) $(B)/recomp/rc_table.c
-APP_C   := src/main.c src/neogeo.c src/video.c src/cpu.c src/snd_native.c src/spr_native.c src/gpu.c
+APP_C   := src/main.c src/neogeo.c src/video.c src/cpu.c src/snd_native.c src/spr_native.c src/gpu.c src/bios_hle.c
 OBJ     := $(patsubst src/%.c,$(W)/obj/%.o,$(APP_C)) \
            $(W)/obj/z80.o $(W)/obj/audio.o \
            $(W)/obj/m68kcpu.o $(W)/obj/m68kops.o $(W)/obj/m68kdasm.o $(W)/obj/softfloat.o \
@@ -24,7 +24,9 @@ OBJ     := $(patsubst src/%.c,$(W)/obj/%.o,$(APP_C)) \
 OGG     := $(B)/assets/kof97/audio_ogg
 # remade assets packed as the runtime's default --mods directory
 MODS    ?= mods/kof97
-ROMFILES := p1.bin p2.bin bios.bin s1.bin sfix.bin m1.bin sm1.bin v.bin c.bin lo.bin
+# the BIOS set (bios, sfix, sm1, lo) is packed when present: the page runs the native BIOS by default
+ROMFILES := p1.bin p2.bin s1.bin m1.bin v.bin c.bin \
+            $(notdir $(wildcard $(B)/roms/bios.bin $(B)/roms/sfix.bin $(B)/roms/sm1.bin $(B)/roms/lo.bin))
 
 all: $(W)/index.html
 

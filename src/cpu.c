@@ -6,6 +6,7 @@
 #include <string.h>
 #include "cpu.h"
 #include "recomp_rt.h"
+#include "bios_hle.h"
 
 #define P1_SPAN   0x100000u
 #define BIOS_BASE 0xC00000u
@@ -117,13 +118,16 @@ int cpu_execute(int cycles)
         m68ki_check_interrupts();
         if (CPU_STOPPED) { SET_CYCLES(0); break; }
         if (GET_CYCLES() <= 0) break;
+        if (bios_hle_level && bios_hle_owns(REG_PC)) { bios_hle_exec(); continue; }   /* native BIOS */
+        if (bios_hle_log) bios_hle_watch(REG_PC & 0xffffff);
         if (cpu_mode == CPU_MODE_RECOMP) {
             rc_fn fn = lookup(REG_PC);
             if (fn) { stats.rc_calls++; fn(); continue; }
             stats.interp_entries++;
             note_miss(REG_PC);
             /* interpret until we reach recompiled code again */
-            do { interp_one(); } while (GET_CYCLES() > 0 && !lookup(REG_PC) && !CPU_STOPPED);
+            do { interp_one(); } while (GET_CYCLES() > 0 && !lookup(REG_PC) && !CPU_STOPPED &&
+                                        !(bios_hle_level && bios_hle_owns(REG_PC)));
         } else {
             interp_one();
         }

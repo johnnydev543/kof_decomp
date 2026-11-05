@@ -85,7 +85,8 @@ static int sprite_on_scanline(int scanline, int y, int rows)
  * Tagged frames (video_render_frame, used by --hd and the GPU output): a pixel a replacement wrote holds a tag
  * (alpha 0, low byte = index into recs) instead of a colour; later sprites and the fix layer overwrite it as
  * usual. under[] keeps the colour below each tagged pixel. A rec maps screen positions to box positions
- * (origin and scale, which differ from 1 for shrunk objects), so the image can be sampled at any resolution:
+ * (origin and scale, which differ from 1 for shrunk objects) and boxpos[] the box pixel the hardware picked for
+ * each screen pixel, so the image can be sampled at any resolution around it:
  * video_compose (CPU) or gpu.c.
  * The image follows palette changes: at each screen pixel the original tile's colour now is compared with
  * the colour it was exported with (spr_block.ref) and the difference is added (hit flashes, other colour
@@ -94,10 +95,13 @@ static int sprite_on_scanline(int scanline, int y, int rows)
  * flat dark palette) the image only gives the shape, filled with that colour. */
 static int tagging;                              /* rendering a tagged frame */
 static video_rec recs[VIDEO_MAX_RECS];
+static spr_block rec_blocks[VIDEO_MAX_RECS];      /* copies: a record keeps its image even if the game reuses the
+                                                     block for another frame later in the same picture */
 static int nrecs;
 static uint32_t under[NG_SCREEN_W * NG_SCREEN_H];  /* colour under a tagged pixel */
 static uint32_t onex[NG_SCREEN_W * NG_SCREEN_H];   /* the replacement's own 1x colour at a tagged pixel */
 static uint32_t pdelta[NG_SCREEN_W * NG_SCREEN_H]; /* palette change at a tagged pixel (pal_delta) */
+static uint32_t boxpos[NG_SCREEN_W * NG_SCREEN_H]; /* box pixel the hardware shows there: x | y << 16 */
 static int tag_row;                              /* first index of the current line in under[] / onex[] */
 
 /* the image pixel at box position (fx, fy), continuous box pixels (pixel centres at .5); NULL outside */
@@ -119,11 +123,15 @@ static inline uint32_t rgba_px(const uint8_t *c) { return 0xff000000u | (uint32_
 static int find_rec(const spr_block *b, int x0, int y0, int zoom_x, int zoom_y, uint32_t fill)
 {
     x0 &= 0x1ff; y0 &= 0x1ff;
-    for (int i = nrecs - 1; i >= 0; i--)
-        if (recs[i].b == b && recs[i].x0 == x0 && recs[i].y0 == y0 && recs[i].zoom_x == zoom_x &&
-            recs[i].zoom_y == zoom_y && recs[i].fill == fill) return i;
+    for (int i = nrecs - 1; i >= 0; i--) {
+        const spr_block *c = recs[i].b;
+        if (c->img == b->img && c->w == b->w && c->h == b->h && c->flips == b->flips && recs[i].x0 == x0 &&
+            recs[i].y0 == y0 && recs[i].zoom_x == zoom_x && recs[i].zoom_y == zoom_y && recs[i].fill == fill) return i;
+    }
     if (nrecs == VIDEO_MAX_RECS) return -1;
-    recs[nrecs] = (video_rec){ b, x0, y0, zoom_x, zoom_y, 16.0f / (float)(zoom_x + 1), 256.0f / (float)(zoom_y + 1), fill };
+    rec_blocks[nrecs] = *b;
+    recs[nrecs] = (video_rec){ &rec_blocks[nrecs], x0, y0, zoom_x, zoom_y, 16.0f / (float)(zoom_x + 1),
+                               256.0f / (float)(zoom_y + 1), fill };
     return nrecs++;
 }
 
@@ -180,6 +188,7 @@ static void draw_replacement_column(const spr_block *b, int c, int fy, int x, in
         *u = (below >> 24) ? below : *o;        /* below another replacement: its 1x colour */
         *o = opaque ? v : *u;
         pdelta[tag_row + sx] = delta;
+        boxpos[tag_row + sx] = (uint32_t)(c * 16 + k) | (uint32_t)fy << 16;
         line[sx] = (uint32_t)rec;                 /* tag: alpha 0 */
     }
 }
@@ -288,6 +297,17 @@ static void draw_fix(int scanline, uint32_t *line, const uint32_t *pens)
     }
 }
 
+/* one visible line of a tagged frame, rendered when the hardware draws it (so mid-frame changes show); the
+   first visible line starts a new set of records */
+void video_render_line_tagged(int l, uint32_t *fb)
+{
+    if (l == NG_VBEND) nrecs = 0;
+    tagging = 1;
+    tag_row = (l - NG_VBEND) * NG_SCREEN_W;
+    video_render_line(l, fb + tag_row);
+    tagging = 0;
+}
+
 void video_render_frame(uint32_t *fb)
 {
     tagging = 1;
@@ -299,8 +319,9 @@ void video_render_frame(uint32_t *fb)
     tagging = 0;
 }
 
-int video_recs(const video_rec **r, const uint32_t **under_out, const uint32_t **delta_out)
+int video_recs(const video_rec **r, const uint32_t **under_out, const uint32_t **delta_out, const uint32_t **boxpos_out)
 {
+    *boxpos_out = boxpos;
     *r = recs;
     *under_out = under;
     *delta_out = pdelta;
@@ -321,11 +342,16 @@ void video_compose(const uint32_t *fb, uint32_t *out, int s)
             const video_rec *r = &recs[px & 0xff];
             uint32_t below = under[y * NG_SCREEN_W + x], delta = pdelta[y * NG_SCREEN_W + x];
             if (ng.shadow) below = 0xff000000u | ((below >> 1) & 0x7f7f7f);
-            int lx = (x - r->x0) & 0x1ff, ly = (y + NG_VBEND - r->y0) & 0x1ff;
+            /* around the box pixel the hardware chose for this screen pixel; art at the original resolution
+               (or smaller) takes exactly that pixel, so shrunk objects match the 1x picture */
+            uint32_t bp = boxpos[y * NG_SCREEN_W + x];
+            float hx = (float)(bp & 0xffff) + 0.5f, hy = (float)(bp >> 16) + 0.5f;
+            int fine = r->b->img->w > 16 * r->b->w || r->b->img->h > 16 * r->b->h;
             for (int j = 0; j < s; j++)
                 for (int i = 0; i < s; i++) {
-                    const uint8_t *c = repl_at(r->b, ((float)lx + (i + 0.5f) / s) * r->scale_x,
-                                               ((float)ly + (j + 0.5f) / s) * r->scale_y);
+                    const uint8_t *c = fine ? repl_at(r->b, hx + ((i + 0.5f) / s - 0.5f) * r->scale_x,
+                                                      hy + ((j + 0.5f) / s - 0.5f) * r->scale_y)
+                                            : repl_at(r->b, hx, hy);
                     uint32_t v = below;
                     if (c && c[3] >= 128) {
                         v = r->fill ? r->fill : apply_delta(rgba_px(c), delta);

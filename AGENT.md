@@ -204,6 +204,20 @@ make test                        # 重編譯指令 vs Musashi 差分測試
 換成遊戲向量後每幀把 `BIOS_MVS_FLAG`（$10FD82）清 0，遊戲走家用版路徑（MODE SELECT、OPTION、不需投幣）。
 不能從開機就清：BIOS 的 RAM 測試會讀回不符而停在 WORK RAM ERROR。
 
+**原生 BIOS（`src/bios_hle.c`）**：`--bios-hle N`，1 = 遊戲呼叫的服務（LSP_1ST、FIX_CLEAR、CREDIT_CHECK…），
+2 = 再加 SYSTEM_IO，3 = 全部（開機、VBlank、SYSTEM_RETURN、示範/標題循環），不需要 BIOS ROM（`bios.bin`、`sfix`、
+`sm1` 缺少時用替代品，L0 縮放表用公式產生：縮放 z 顯示 {bitrev8(k)^0x88 : k<=z}）。依 BIOS 反組譯寫成（位址
+都在註解）；行為規格的重點：KOF97 第一次開機需要看門狗打斷註冊迴圈；SYSTEM_IO 在 VBlank 中斷內呼叫
+PLAYER_START / COIN_SOUND / DEMO_END，DEMO_END 後直接 SYSTEM_RETURN（SP 重設為 $10F300）。HLE 以「接續位址」
+（$C1FF00..）實作回呼與等待，SR 用 `m68ki_set_sr_noint`（不能當場觸發中斷）。快速開機（預設 timing 0,0,0）
+不畫 eye-catcher；`--bios-hle-timing` 可設成與 ROM 相同的時序。沒有 F2 選單：軟體 DIP 用
+`--soft-dip name=value`（`--soft-dip list`）。
+
+驗證：`make biostest`（`tools/recomp/biostest.py`）同腳本跑 ROM（--interp）與 HLE，比對 BIOS 呼叫、聲音指令、
+截圖（eye-catcher 期間除外）。遊戲的亂數會混入掃描線計數器，BIOS 服務耗用的週期會改變它，所以測試用
+`--test-raster`（計數器讀值與時序無關）、`--test-cpu-scale 4`（遊戲不會延幀）、原生聲音；不這樣做時 HLE
+與 ROM 只在週期上不同，不是邏輯錯誤。`testmode` 腳本用到 ROM 的 F2 選單，不在比對內。
+
 其他選項：`--interp`（純 Musashi 參考模式）、`--headless --frames N`、`--dump PREFIX --dump-every N`（PPM 截圖）、
 `--wav FILE`、`--script FILE`（`frame duration key[,key]`）、`--autoplay`、`--trace-pc N`、`--misses FILE`、`--nvram FILE`。
 

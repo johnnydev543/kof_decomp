@@ -12,6 +12,7 @@
 #include "snd_native.h"
 #include "spr_native.h"
 #include "gpu.h"
+#include "bios_hle.h"
 #include "m68k.h"
 
 static uint32_t fb[NG_SCREEN_W * NG_SCREEN_H];     /* frame buffer (ARGB) */
@@ -56,14 +57,22 @@ static void usage(void)
          "                      emulating the Z80 + YM2610 (default DIR build/assets/kof97/audio)\n"
          "  --mods DIR          remade assets (sprites/, audio/) that replace the originals (default mods/kof97)\n"
          "  --aes               home (AES) mode: mode select menu, options, no coins\n"
+         "  --bios-hle N        native BIOS: 1 services, 2 + SYSTEM_IO, 3 everything (no BIOS ROM needed)\n"
+         "  --bios-hle-timing T level 3 boot timing: 'real' (as the BIOS ROM) or F,B,E[,R] frames (boot delay on a\n"
+         "                      fresh backup RAM, boot delay, eye-catcher length, boot delay after a watchdog\n"
+         "                      reset); default 0,0,0 (fast)\n"
+         "  --soft-dip S        native BIOS: soft-DIP settings 'name=value,...' ('--soft-dip list' shows them)\n"
+         "  --bios-log          print the BIOS's calls into the game (USER, PLAYER_START, SYSTEM_RETURN ...)\n"
+         "  --test-raster       tests: the raster line counter read does not depend on CPU timing\n"
+         "  --test-cpu-scale N  tests: N times the 68000 cycles per line, so the game never runs late\n"
          "  --gpu               draw with OpenGL at the window's resolution (remade sprites at full detail)\n"
          "  --keys FILE         key bindings: lines 'action=Key Name' (actions p1_up .. p1_d, p2_up .. p2_d,\n"
          "                      p1_start, p2_start, p1_coin, p2_coin, service, test; SDL key names;\n"
          "                      gamepad: pad_a .. pad_d, pad_start, pad_coin = SDL button names a, b, x, y, ...)\n"
          "  --print-keys        print the key bindings in --keys format (after any --keys) and exit\n"
          "  --sound-log FILE    log every sound command (68k -> Z80) and reply with its frame\n"
-         "  --hd S              render at S x resolution (remade sprites keep their detail; implies --frame-render)\n"
-         "  --frame-render      draw each frame at once at the start of VBlank (native renderer reference)\n"
+         "  --hd S              render at S x resolution (remade sprites keep their detail)\n"
+         "  --frame-render      draw each frame at once at the start of VBlank instead of line by line\n"
          "  --roms DIR          normalised ROM dir from tools/romprep.py (default build/roms)\n"
          "  --interp            run the 68000 purely on the Musashi interpreter (reference mode)\n"
          "  --headless          no window/audio device; use with --frames\n"
@@ -218,6 +227,8 @@ static void script_input(int frame, uint8_t *p1, uint8_t *p2, uint8_t *sys)
 }
 
 static int use_gpu;
+static int bios_level;
+static const char *bios_timing, *soft_dip;
 static int web_worklet;          /* web page with an AudioWorklet: audio goes to Module.audioPush */
 
 static void write_ppm_buf(const char *path, const uint32_t *fb, int w, int h)
@@ -556,7 +567,13 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "--frame-render")) ng_frame_render = 1;
         else if (!strcmp(a, "--gpu")) use_gpu = 1;
         else if (!strcmp(a, "--aes")) ng_aes = 1;
-        else if (!strcmp(a, "--hd")) { ng_hd_scale = atoi(TAKE); ng_frame_render = 1; }
+        else if (!strcmp(a, "--bios-hle")) bios_level = atoi(TAKE);
+        else if (!strcmp(a, "--bios-hle-timing")) bios_timing = TAKE;
+        else if (!strcmp(a, "--bios-log")) bios_hle_log = 1;
+        else if (!strcmp(a, "--soft-dip")) soft_dip = TAKE;
+        else if (!strcmp(a, "--test-raster")) ng_test_raster = 1;
+        else if (!strcmp(a, "--test-cpu-scale")) { int k = atoi(TAKE); ng_test_cpu_scale = k > 0 ? k : 1; }
+        else if (!strcmp(a, "--hd")) ng_hd_scale = atoi(TAKE);
         else if (!strcmp(a, "--sound-log")) sound_log_path = TAKE;
         else if (!strcmp(a, "--keys")) {
             const char *path = TAKE;
@@ -618,10 +635,16 @@ int main(int argc, char **argv)
     if (opt.autoplay) build_autoplay();
 
     if (use_gpu && opt.headless) use_gpu = 0;
-    if (use_gpu) { ng_hd_scale = 1; ng_frame_render = 1; ng_tagged = 1; }   /* the GPU composes at any size */
+    if (use_gpu) { ng_hd_scale = 1; ng_tagged = 1; }   /* the GPU composes at any size */
     if (ng_hd_scale < 1 || ng_hd_scale > 8) ng_hd_scale = 1;
     if (ng_hd_scale > 1) ng_hd_fb = calloc((size_t)NG_SCREEN_W * NG_SCREEN_H * ng_hd_scale * ng_hd_scale, 4);
+    bios_hle_init(bios_level, bios_timing);
     if (!ng_load_roms(opt.roms)) return 1;
+    if (soft_dip && !strcmp(soft_dip, "list")) { bios_hle_soft_dip_list(); return 0; }
+    if (soft_dip) {
+        if (bios_level < 3) fprintf(stderr, "--soft-dip needs --bios-hle 3 (with the BIOS ROM: F2 menu)\n");
+        bios_hle_soft_dip(soft_dip);
+    }
     if (native_audio && !snd_native_init(native_audio, mods_dir ? mods_dir : "")) {
 #ifdef __EMSCRIPTEN__
         fprintf(stderr, "no packed sounds: using the emulated sound chips\n");   /* build without `make audio-ogg` */

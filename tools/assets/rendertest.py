@@ -5,11 +5,11 @@ Every exported frame (build/assets/<GAME>/sprites, export_sprites.py) is used un
 replacement image (a mods directory of symbolic links). Replacements are then drawn through the whole
 replacement path - frame recognition at the native hook, box placement, flips, shrinking, flat-palette
 fills, and the palette changes measured against the exported palettes - so the result must equal the run
-without replacements:
-  * 1x (--frame-render): every screenshot identical, byte for byte
-  * --hd 2 (tagged frames composed at 2x): equal to the 1x picture doubled, except where shrunk objects
-    are sampled linearly inside a screen pixel (the edges of the squashed shadows): at most --hd-tolerance
-    of a screenshot's pixels may differ
+without replacements, both when each frame is drawn at once (--frame-render) and line by line (the default,
+which shows the game's mid-frame writes):
+  * 1x: every screenshot identical, byte for byte
+  * --hd 2 (tagged frames composed at 2x): the 1x picture doubled, exactly (art at the original resolution
+    takes the box pixel the hardware chose for each screen pixel, shrunk objects included)
 Runs use fresh backup RAM, a fixed calendar and the coverage scripts in games/<GAME>/scripts.
 
 usage: rendertest.py [--scripts arcade_00_japan versus ...] [--every 20] [--jobs 10] [--keep]
@@ -59,8 +59,11 @@ def run(script, mode, mods, every):
     args = [os.path.join(ROOT, 'build/kof97'), '--headless', '--frames', str(frames), '--rtc-fixed', '883612800',
             '--misses', '', '--quiet', '--nvram', os.path.join(d, 'nv'), '--script', script,
             '--dump', os.path.join(d, 's'), '--dump-every', str(every),
-            '--mods', mods if mode != 'base' else os.path.join(d, 'none')]
-    args += ['--hd', '2'] if mode == 'hd' else ['--frame-render']
+            '--mods', mods if not mode.endswith('base') else os.path.join(d, 'none')]
+    if mode.startswith('f'):
+        args += ['--frame-render']
+    if mode.endswith('hd'):
+        args += ['--hd', '2']
     subprocess.run(args, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     return d
 
@@ -73,10 +76,13 @@ def ppm(path):
     return np.frombuffer(parts[4][-w * h * 3:], np.uint8).reshape(h, w, 3)
 
 
-def compare(name, tolerance):
-    """(1x mismatches, hd mismatches, frames, worst hd share)"""
+MODES = ('fbase', 'fid', 'fhd', 'lbase', 'lid', 'lhd')     # f: --frame-render, l: line by line
+
+
+def compare(name, kind, tolerance):
+    """(1x mismatches, hd mismatches, frames, worst hd share) for kind 'f' or 'l'"""
     import numpy as np
-    base, ident, hd = (os.path.join(OUT, '%s.%s' % (name, m)) for m in ('base', 'id', 'hd'))
+    base, ident, hd = (os.path.join(OUT, '%s.%s%s' % (name, kind, m)) for m in ('base', 'id', 'hd'))
     bad1 = badhd = n = 0
     worst = 0.0
     for f in sorted(glob.glob(os.path.join(base, 's_*.ppm'))):
@@ -98,26 +104,27 @@ def main():
     ap.add_argument('--scripts', nargs='*', default=DEFAULT_SCRIPTS)
     ap.add_argument('--every', type=int, default=20, help='screenshot interval in frames')
     ap.add_argument('--jobs', type=int, default=10)
-    ap.add_argument('--hd-tolerance', type=float, default=0.002)
+    ap.add_argument('--hd-tolerance', type=float, default=0.0, help='share of pixels allowed to differ at 2x')
     ap.add_argument('--keep', action='store_true', help='keep the screenshots')
     a = ap.parse_args()
     if not os.path.exists(os.path.join(SPRITES, 'index.json')):
         sys.exit('build/assets/%s/sprites missing: run `make assets` first' % game.NAME)
     mods = identity_mods()
     scripts = [os.path.join(game.DIR, 'scripts', s + '.txt') for s in a.scripts]
-    jobs = [(s, m) for s in scripts for m in ('base', 'id', 'hd')]
+    jobs = [(s, m) for s in scripts for m in MODES]
     with ThreadPoolExecutor(a.jobs) as ex:
         list(ex.map(lambda j: run(j[0], j[1], mods, a.every), jobs))
     ok = True
     for s in scripts:
         name = os.path.basename(s)[:-4]
-        bad1, badhd, n, worst = compare(name, a.hd_tolerance)
-        good = n > 0 and not bad1 and not badhd
-        ok &= good
-        print('%-4s %-22s %5d screenshots  1x differ %d  hd over tolerance %d (worst %.4f%%)'
-              % ('OK' if good else 'FAIL', name, n, bad1, badhd, worst * 100))
+        for kind, label in (('f', 'frame'), ('l', 'line')):
+            bad1, badhd, n, worst = compare(name, kind, a.hd_tolerance)
+            good = n > 0 and not bad1 and not badhd
+            ok &= good
+            print('%-4s %-22s %-5s %5d screenshots  1x differ %d  hd over tolerance %d (worst %.4f%%)'
+                  % ('OK' if good else 'FAIL', name, label, n, bad1, badhd, worst * 100), flush=True)
         if not a.keep:
-            for m in ('base', 'id', 'hd'):
+            for m in MODES:
                 for f in glob.glob(os.path.join(OUT, '%s.%s' % (name, m), 's_*.ppm')):
                     os.remove(f)
     print('rendertest: %s' % ('PASS' if ok else 'FAIL'))

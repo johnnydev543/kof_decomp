@@ -11,6 +11,8 @@
 #define NG_VBEND 16             /* first visible line */
 extern int ng_frame_render;
 extern int ng_aes;               /* home (AES) mode, --aes */
+extern int ng_test_raster;       /* tests: line counter reads independent of timing (--test-raster) */
+extern int ng_test_cpu_scale;    /* tests: 68000 cycles per line x N, so the game never runs late (--test-cpu-scale) */
 extern void (*ng_sound_log)(int frame, int dir, uint8_t val);   /* dir 0: 68k -> Z80 command, 1: Z80 reply */
 #define NG_CYCLES_PER_LINE 768  /* 12 MHz 68000, 384 pixel clocks per line at 6 MHz */
 #define NG_Z80_CYCLES_PER_LINE 256
@@ -96,8 +98,10 @@ void video_render_line(int line, uint32_t *fb);
 struct spr_block;
 typedef struct { const struct spr_block *b; int x0, y0, zoom_x, zoom_y; float scale_x, scale_y; uint32_t fill; } video_rec;
 void video_render_frame(uint32_t *fb);                             /* tagged 1x frame (visible lines) */
+void video_render_line_tagged(int line, uint32_t *fb);            /* one line of it, at its time */
 void video_compose(const uint32_t *fb, uint32_t *out, int scale);   /* tagged frame -> colours, S x S */
-int  video_recs(const video_rec **recs, const uint32_t **under, const uint32_t **delta);   /* this frame's replacements */
+int  video_recs(const video_rec **recs, const uint32_t **under, const uint32_t **delta,
+                const uint32_t **boxpos);                          /* this frame's replacements */
 extern uint32_t *ng_hd_fb;      /* when set: --frame-render composes at ng_hd_scale x into it */
 extern int ng_hd_scale;
 extern int ng_tagged;           /* frame-render keeps fb tagged (the GPU output composes it) */

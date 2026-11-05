@@ -21,7 +21,7 @@ YMFM        := third_party/ymfm/src
 YMFM_OBJ    := $(B)/obj/ymfm_opn.o $(B)/obj/ymfm_adpcm.o $(B)/obj/ymfm_ssg.o $(B)/obj/ymfm_misc.o
 RC_C        := $(foreach i,$(shell seq -w 0 $$(($(NFILES)-1))),$(B)/recomp/rc_$(i).c) $(B)/recomp/rc_table.c
 RC_OBJ      := $(patsubst $(B)/recomp/%.c,$(B)/obj/recomp/%.o,$(RC_C))
-APP_OBJ     := $(B)/obj/main.o $(B)/obj/neogeo.o $(B)/obj/video.o $(B)/obj/cpu.o $(B)/obj/audio.o $(B)/obj/z80.o $(B)/obj/snd_native.o $(B)/obj/spr_native.o $(B)/obj/gpu.o
+APP_OBJ     := $(B)/obj/main.o $(B)/obj/neogeo.o $(B)/obj/video.o $(B)/obj/cpu.o $(B)/obj/audio.o $(B)/obj/z80.o $(B)/obj/snd_native.o $(B)/obj/spr_native.o $(B)/obj/gpu.o $(B)/obj/bios_hle.o
 
 CFLAGS_COMMON := -I$(MUSASHI) -Isrc -Wall
 ROMS := $(B)/roms/p1.bin
@@ -33,7 +33,7 @@ all: $(B)/kof97
 GAME ?= kof97
 export GAME
 GAME_ZIPS := $(shell python3 -c "import json;c=json.load(open('games/$(GAME)/game.json'));print(c['rom_zip'],c['bios_zip'])")
-$(ROMS): $(GAME_ZIPS) games/$(GAME)/game.json tools/romprep.py
+$(ROMS): $(firstword $(GAME_ZIPS)) $(wildcard $(lastword $(GAME_ZIPS))) games/$(GAME)/game.json tools/romprep.py
 	python3 tools/romprep.py
 
 # ---- Musashi (copied with the project m68kconf.h, opcode tables generated) -----------------
@@ -142,6 +142,9 @@ codecheck:
 # specmap: regenerate games/$(GAME)/symbols/specials.txt (character code by command motion)
 specmap: $(B)/kof97 $(B)/m68kinfo $(B)/m68k_table.txt
 	python3 tools/disasm/specmap.py
+# biostest: the native BIOS (--bios-hle 3) behaves as the BIOS ROM (needs neogeo.zip)
+biostest: $(B)/kof97
+	python3 tools/recomp/biostest.py
 # rendertest: the exported frames used as their own replacements give the original picture (needs `make assets`)
 rendertest: $(B)/kof97
 	python3 tools/assets/rendertest.py
@@ -169,4 +172,4 @@ WEB_PORT ?= 8097
 serve: web
 	python3 tools/web/serve.py --port $(WEB_PORT) --dir $(B)/web
 
-.PHONY: all rea recomp test clean web serve assets audio-ogg rendertest matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap
+.PHONY: all rea recomp test clean web serve assets audio-ogg rendertest biostest matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap

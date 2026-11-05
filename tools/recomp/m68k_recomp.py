@@ -1033,7 +1033,10 @@ def main():
     args = ap.parse_args()
 
     p1 = open(args.p1, 'rb').read()
-    bios = open(args.bios, 'rb').read()
+    # without a BIOS ROM (the native BIOS, src/bios_hle.c, runs instead) there is no BIOS code to compile
+    bios = open(args.bios, 'rb').read() if os.path.exists(args.bios) else b''
+    if not bios:
+        print('no %s: compiling the game only' % args.bios)
     img = Image(p1, bios)
 
     valid, cycles = [], []
@@ -1051,6 +1054,8 @@ def main():
     names = {}
     for i in range(1, 64):
         for base, data in ((0, p1), (BIOS_BASE, bios)):
+            if len(data) < i * 4 + 4:
+                continue
             v = struct.unpack('>I', data[i * 4:i * 4 + 4])[0] & 0xffffff
             if img.in_code(v) and not v & 1 and v >= 0x100:
                 seeds.add(v)
@@ -1058,7 +1063,7 @@ def main():
         seeds.add(a)
         names[a] = n
     a = 0xC00402
-    while img.w16(a) == 0x4EF9:
+    while bios and img.w16(a) == 0x4EF9:
         seeds.add(a)
         a += 6
     names.update(BIOS_NAMES)
@@ -1106,7 +1111,7 @@ def main():
 
     # ---------------- cross-check lengths with Musashi + disassembly ----------------
     addrs = sorted(insns)
-    proc = subprocess.run([args.m68kinfo, 'disasm', args.p1, args.bios],
+    proc = subprocess.run([args.m68kinfo, 'disasm', args.p1, args.bios if bios else '/dev/null'],
                           input=''.join('%x\n' % x for x in addrs), capture_output=True, text=True, check=True)
     mism = 0
     for line in proc.stdout.splitlines():

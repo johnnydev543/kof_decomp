@@ -53,16 +53,20 @@ def main():
         if got != crc:
             sys.exit('%s: CRC %08x, expected %08x (wrong ROM set?)' % (name, got, crc))
         files[name] = data
-    b = zipfile.ZipFile(args.bios)
-    names = set(b.namelist())
+    # the BIOS set is optional: without it the runtime uses its native BIOS (--bios-hle 3)
     bios = {}
-    for key, cands in BIOS_ALIASES.items():
-        for c in cands:
-            if c in names:
-                bios[key] = b.read(c)
-                break
-        else:
-            sys.exit('neogeo.zip: none of %s found' % cands)
+    if os.path.exists(args.bios):
+        b = zipfile.ZipFile(args.bios)
+        names = set(b.namelist())
+        for key, cands in BIOS_ALIASES.items():
+            for c in cands:
+                if c in names:
+                    bios[key] = b.read(c)
+                    break
+            else:
+                sys.exit('neogeo.zip: none of %s found' % cands)
+    else:
+        print('%s not found: no BIOS ROMs (run with --bios-hle 3)' % args.bios)
 
     def out(name, data):
         with open(os.path.join(args.out, name), 'wb') as f:
@@ -71,17 +75,17 @@ def main():
     r = game.CFG['roms']
     p1 = swap16(files[r['p1'][0]])
     p2 = swap16(files[r['p2'][0]]) if r.get('p2') else b''
-    bi = swap16(bios['bios'])
     out('p1.bin', p1); out('p1.be', p1)
     out('p2.bin', p2)
-    out('bios.bin', bi); out('bios.be', bi)
     out('s1.bin', files[r['s1'][0]])
-    out('sfix.bin', bios['sfix'])
     out('m1.bin', files[r['m1'][0]])
-    out('sm1.bin', bios['sm1'])
     out('v.bin', b''.join(files[f] for f, _ in r['v']))
-    lo = bios['lo']
-    out('lo.bin', lo[:0x10000])
+    if bios:
+        bi = swap16(bios['bios'])
+        out('bios.bin', bi); out('bios.be', bi)
+        out('sfix.bin', bios['sfix'])
+        out('sm1.bin', bios['sm1'])
+        out('lo.bin', bios['lo'][:0x10000])
     # sprites: ROM_LOAD16_BYTE pairs (even/odd), one pair after the other (c1/c2 at 0, c3/c4 next, ...)
     c = bytearray()
     for (even, _), (odd, _) in r['c']:

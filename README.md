@@ -20,8 +20,14 @@ It contains:
   run the program through an optional 68000 -> C recompiler for speed (`make test`, `make modecheck`
   check it against the interpreter); that part is not needed for the disassembly.
 
-**No ROM data is included.** You need your own `kof97.zip` and `neogeo.zip` (MAME sets). Everything built
-from them (`build/`) is local only and must not be redistributed.
+- **A native BIOS** (`src/bios_hle.c`, `--bios-hle 3`): the MVS BIOS's boot, VBlank, controller, coin,
+  credit and attract-cycle logic rewritten from its disassembly, so the game runs without a BIOS ROM.
+  `make biostest` compares it with the BIOS ROM on the coverage scripts (same BIOS calls, sound commands and
+  pictures).
+
+**No ROM data is included.** You need your own `kof97.zip` (MAME set); `neogeo.zip` is optional (the BIOS ROM
+for the test bench, its F2 menu and the reference runs; without it use `--bios-hle 3`). Everything built from
+them (`build/`) is local only and must not be redistributed.
 
 ## Requirements
 
@@ -32,14 +38,17 @@ from them (`build/`) is local only and must not be redistributed.
 ## Quick start
 
 ```sh
-cp /path/to/kof97.zip /path/to/neogeo.zip roms/
+cp /path/to/kof97.zip /path/to/neogeo.zip roms/   # neogeo.zip optional
 make -j8            # checks the ROM CRCs, recompiles, builds build/kof97
 build/kof97         # play (see build/kof97 --help for headless, scripts, logs)
+build/kof97 --bios-hle 3   # play with the native BIOS (quick start, no BIOS ROM needed)
 make test           # recompiled code vs interpreter: 0 failed
 make matching       # build/disasm/p1.s -> reassembled P1/P2, CRCs verified
 make shifttest      # behaviour unchanged with code shifted by 2 bytes (long; limit with --jobs)
 make namecov        # how much executed code has a name
 make codecheck      # code still emitted as data / bad character labels
+make rendertest     # remade-sprite path: exported frames as replacements give the original picture
+make biostest       # native BIOS vs the BIOS ROM (needs neogeo.zip)
 ```
 
 Keys: P1 `W S A D` + `J K U I` (A B C D), P2 arrows + keypad `1 2 4 5`, coin `5`/`6`, start `1`/`2`.
@@ -49,9 +58,11 @@ Start, Back = coin; the buttons can be rebound the same way (`pad_a=x` ...). The
 on touch screens (or with *Touch controls* / `?touch=1`), and plays audio through an AudioWorklet where the
 browser allows it (https or localhost; plain-http LAN addresses keep SDL's audio).
 
-Arcade (MVS) mode by default: `F2` opens the BIOS menu, whose *soft DIP* page sets play speed, continue,
-difficulty (1-8), single or team play, blood colour and more (kept in `kof97.nvram`; on the web page, in the
-browser). `--aes` (web: `?aes=1`) runs the home cartridge mode instead: mode select menu (team, single, VS,
+Arcade (MVS) mode by default: with the BIOS ROM `F2` opens the BIOS menu, whose *soft DIP* page sets play
+speed, continue, difficulty (1-8), single or team play, blood colour and more; with the native BIOS use
+`--soft-dip difficulty=level_8,game_mode=single_play` (`--soft-dip list` shows the settings; web:
+`?dip=...`). Settings are kept in `kof97.nvram` (on the web page, in the browser). The web page uses the native
+BIOS (`?bios=rom` for the ROM). `--aes` (web: `?aes=1`) runs the home cartridge mode instead: mode select menu (team, single, VS,
 survivor, records), in-game options, no coins.
 
 ## Layout
