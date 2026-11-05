@@ -992,7 +992,12 @@ def scan_pointer_seeds(img, valid, known):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--p1', default=os.path.join(ROOT, 'build/roms/p1.be'))
+    # the assembly source is the source of truth: translate the image assembled from build/disasm/p1.s
+    # (make matching) when it exists, else the original dump
+    asm_p1 = os.path.join(ROOT, 'build/disasm/p1.bin')
+    ap.add_argument('--p1', default=asm_p1 if os.path.exists(asm_p1) else os.path.join(ROOT, 'build/roms/p1.be'))
+    ap.add_argument('--code-map', default=os.path.join(ROOT, 'build/disasm/code_p1.txt'),
+                    help='instruction addresses of the assembled image (tools/disasm/codemap.py): discovery seeds')
     ap.add_argument('--bios', default=os.path.join(ROOT, 'build/roms/bios.be'))
     ap.add_argument('--rea-p1', default=os.path.join(ROOT, 'build/rea/decomp_p1/decompile-index.json'))
     ap.add_argument('--rea-bios', default=os.path.join(ROOT, 'build/rea/decomp_bios/decompile-index.json'))
@@ -1058,7 +1063,8 @@ def main():
         for (_, lo, _) in r:
             seeds.add(lo)
     n_rea = len(seeds)
-    for path in (args.extra_seeds, args.misses):
+    print('P1 image: %s' % os.path.relpath(args.p1, ROOT))
+    for path in (args.extra_seeds, args.misses, args.code_map):
         if os.path.exists(path):
             for line in open(path):
                 line = line.split('#')[0].strip()

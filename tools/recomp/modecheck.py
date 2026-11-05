@@ -53,7 +53,7 @@ def main():
     ap.add_argument('--all', action='store_true')
     ap.add_argument('--frames', type=int, default=15000)
     ap.add_argument('--dump-every', type=int, default=250)
-    ap.add_argument('--jobs', type=int, default=os.cpu_count())
+    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) // 2))   # never all cores
     args = ap.parse_args()
     cases = []
     if args.autoplay or args.all:

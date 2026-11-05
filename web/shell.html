@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kof_decomp (dev build)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #ccc; font: 14px/1.4 system-ui, sans-serif; }
+  #wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; gap: 12px; }
+  canvas { width: min(96vw, 960px); aspect-ratio: 320 / 224; image-rendering: pixelated; background: #000; outline: none; }
+  #status { min-height: 1.4em; }
+  #keys { color: #888; font-size: 13px; text-align: center; }
+  kbd { background: #222; border: 1px solid #444; border-radius: 3px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+  <div id="status">Loading...</div>
+  <div id="keys">
+    P1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd><kbd>K</kbd><kbd>U</kbd><kbd>I</kbd> = A B C D ·
+    P2 arrows, keypad <kbd>1</kbd><kbd>2</kbd><kbd>4</kbd><kbd>5</kbd> ·
+    coin <kbd>5</kbd>/<kbd>6</kbd>, start <kbd>1</kbd>/<kbd>2</kbd>, pause <kbd>P</kbd>, reset <kbd>F3</kbd>
+  </div>
+</div>
+<script>
+  var statusEl = document.getElementById('status');
+  var canvas = document.getElementById('canvas');
+  canvas.addEventListener('click', function () { canvas.focus(); });
+  var Module = {
+    canvas: canvas,
+    arguments: [],
+    setStatus: function (t) { statusEl.textContent = t || 'Click the game to give it the keyboard.'; },
+    print: function (t) { console.log(t); },
+    printErr: function (t) { console.warn(t); },
+    onRuntimeInitialized: function () { canvas.focus(); }
+  };
+  /* browsers start audio only after a user gesture */
+  ['click', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, function () {
+      if (typeof SDL2 !== 'undefined' && SDL2.audioContext && SDL2.audioContext.state === 'suspended') SDL2.audioContext.resume();
+    });
+  });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

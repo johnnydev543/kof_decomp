@@ -3,10 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include "neogeo.h"
 #include "cpu.h"
 #include "audio.h"
 #include "m68k.h"
+
+static uint32_t fb[NG_SCREEN_W * NG_SCREEN_H];     /* frame buffer (ARGB) */
+static int16_t abuf[8192 * 2];                     /* audio transfer buffer */
 
 typedef struct { int frame, len; uint8_t p1, p2, sys; } script_ev;
 
@@ -234,10 +240,11 @@ static uint8_t key_p1, key_p2, key_sys, pad_p[2], pad_sys;
 static void handle_key(SDL_Keycode k, int down)
 {
     struct { SDL_Keycode k; uint8_t *dst; uint8_t bit; } map[] = {
-        { SDLK_UP, &key_p1, NG_UP }, { SDLK_DOWN, &key_p1, NG_DOWN }, { SDLK_LEFT, &key_p1, NG_LEFT }, { SDLK_RIGHT, &key_p1, NG_RIGHT },
-        { SDLK_z, &key_p1, NG_A }, { SDLK_x, &key_p1, NG_B }, { SDLK_c, &key_p1, NG_C }, { SDLK_v, &key_p1, NG_D },
-        { SDLK_r, &key_p2, NG_UP }, { SDLK_f, &key_p2, NG_DOWN }, { SDLK_d, &key_p2, NG_LEFT }, { SDLK_g, &key_p2, NG_RIGHT },
-        { SDLK_a, &key_p2, NG_A }, { SDLK_s, &key_p2, NG_B }, { SDLK_q, &key_p2, NG_C }, { SDLK_w, &key_p2, NG_D },
+        /* P1: W/S/A/D + J/K/U/I = A/B/C/D; P2: arrow keys + keypad 1/2/4/5 (remapping: later) */
+        { SDLK_w, &key_p1, NG_UP }, { SDLK_s, &key_p1, NG_DOWN }, { SDLK_a, &key_p1, NG_LEFT }, { SDLK_d, &key_p1, NG_RIGHT },
+        { SDLK_j, &key_p1, NG_A }, { SDLK_k, &key_p1, NG_B }, { SDLK_u, &key_p1, NG_C }, { SDLK_i, &key_p1, NG_D },
+        { SDLK_UP, &key_p2, NG_UP }, { SDLK_DOWN, &key_p2, NG_DOWN }, { SDLK_LEFT, &key_p2, NG_LEFT }, { SDLK_RIGHT, &key_p2, NG_RIGHT },
+        { SDLK_KP_1, &key_p2, NG_A }, { SDLK_KP_2, &key_p2, NG_B }, { SDLK_KP_4, &key_p2, NG_C }, { SDLK_KP_5, &key_p2, NG_D },
         { SDLK_1, &key_sys, NG_SYS_START1 }, { SDLK_2, &key_sys, NG_SYS_START2 },
         { SDLK_5, &key_sys, NG_SYS_COIN1 }, { SDLK_6, &key_sys, NG_SYS_COIN2 },
         { SDLK_9, &key_sys, NG_SYS_SERVICE }, { SDLK_F2, &key_sys, NG_SYS_TEST },
@@ -276,6 +283,71 @@ static void print_stats(void)
             ng.watchdog_resets, (unsigned long long)ng.frame, (unsigned long long)s->rc_calls,
             (unsigned long long)s->interp_entries, (unsigned long long)s->interp_insns);
 }
+
+/* ---- interactive loop: one emulated frame per call (native loop or browser main loop) ---- */
+static struct {
+    SDL_Window *win; SDL_Renderer *ren; SDL_Texture *tex; SDL_AudioDeviceID adev;
+    SDL_GameController *pads[2]; int npad;
+    uint64_t freq; double frame_ticks, next;
+    int running, paused, shot, f;
+} ui;
+
+static void frame_step(void)
+{
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)) {
+        if (ev.type == SDL_QUIT) ui.running = 0;
+        else if (ev.type == SDL_KEYDOWN || ev.type == SDL_KEYUP) {
+            int down = ev.type == SDL_KEYDOWN;
+            SDL_Keycode k = ev.key.keysym.sym;
+            if (down && k == SDLK_ESCAPE) ui.running = 0;
+            else if (down && k == SDLK_p && !ev.key.repeat) ui.paused = !ui.paused;
+            else if (down && k == SDLK_F3) ng_reset();
+            else if (down && k == SDLK_F12) {
+                char path[64]; snprintf(path, sizeof path, "kof97_shot_%03d.ppm", ui.shot++); write_ppm(path, fb);
+            }
+            else handle_key(k, down);
+        } else if (ev.type == SDL_CONTROLLERDEVICEADDED && ui.npad < 2) {
+            ui.pads[ui.npad++] = SDL_GameControllerOpen(ev.cdevice.which);
+        }
+    }
+    if (!ui.paused) {
+        poll_pads(ui.pads);
+        uint8_t p1 = key_p1 | pad_p[0], p2 = key_p2 | pad_p[1], sys = key_sys | pad_sys;
+        script_input(ui.f, &p1, &p2, &sys);
+        ng_set_input(p1, p2, sys);
+        script_pokes(ui.f);
+        ng_run_frame(fb);
+        ui.f++;
+        int n;
+        while ((n = audio_read_samples(abuf, 8192)) > 0) {
+            if (wavf) { fwrite(abuf, 4, (size_t)n, wavf); wav_frames += (uint32_t)n; }
+            if (ui.adev) {
+                /* keep latency bounded: drop audio if the queue grows beyond ~150 ms */
+                if (SDL_GetQueuedAudioSize(ui.adev) > (Uint32)(AUDIO_RATE * 4 * 15 / 100)) SDL_ClearQueuedAudio(ui.adev);
+                SDL_QueueAudio(ui.adev, abuf, (Uint32)n * 4);
+            }
+        }
+    }
+    SDL_UpdateTexture(ui.tex, NULL, fb, NG_SCREEN_W * 4);
+    SDL_RenderClear(ui.ren);
+    SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL);
+    SDL_RenderPresent(ui.ren);
+}
+
+#ifdef __EMSCRIPTEN__
+/* browser animation frames come at the display rate: run as many 59.185 Hz game frames as are due */
+static void web_tick(void)
+{
+    double now = (double)SDL_GetPerformanceCounter();
+    int n = 0;
+    while (ui.next <= now && n < 4) { frame_step(); ui.next += ui.frame_ticks; n++; }
+    if (now - ui.next > ui.frame_ticks * 10) ui.next = now;
+    if (!n) {                                       /* still redraw so the page stays responsive */
+        SDL_RenderClear(ui.ren); SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL); SDL_RenderPresent(ui.ren);
+    }
+}
+#endif
 
 int main(int argc, char **argv)
 {
@@ -335,8 +407,6 @@ int main(int argc, char **argv)
     ng_reset();
     if (opt.wav) wav_open(opt.wav);
 
-    static uint32_t fb[NG_SCREEN_W * NG_SCREEN_H];
-    static int16_t abuf[8192 * 2];
 
     if (opt.headless) {
         FILE *ram_log = opt.ram_log ? fopen(opt.ram_log, "wb") : NULL;
@@ -398,61 +468,28 @@ int main(int argc, char **argv)
     for (int i = 0; i < SDL_NumJoysticks() && npad < 2; i++)
         if (SDL_IsGameController(i)) pads[npad++] = SDL_GameControllerOpen(i);
 
-    uint64_t freq = SDL_GetPerformanceFrequency();
-    double frame_ticks = (double)freq / NG_FPS;
-    double next = (double)SDL_GetPerformanceCounter();
-    int running = 1, paused = 0, shot = 0;
-    for (int f = 0; running && (!opt.frames || f < opt.frames); ) {
-        SDL_Event ev;
-        while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_QUIT) running = 0;
-            else if (ev.type == SDL_KEYDOWN || ev.type == SDL_KEYUP) {
-                int down = ev.type == SDL_KEYDOWN;
-                SDL_Keycode k = ev.key.keysym.sym;
-                if (down && k == SDLK_ESCAPE) running = 0;
-                else if (down && k == SDLK_p && !ev.key.repeat) paused = !paused;
-                else if (down && k == SDLK_F3) ng_reset();
-                else if (down && k == SDLK_F12) {
-                    char path[64]; snprintf(path, sizeof path, "kof97_shot_%03d.ppm", shot++); write_ppm(path, fb);
-                }
-                else handle_key(k, down);
-            } else if (ev.type == SDL_CONTROLLERDEVICEADDED && npad < 2) {
-                pads[npad++] = SDL_GameControllerOpen(ev.cdevice.which);
-            }
-        }
-        if (!paused) {
-            poll_pads(pads);
-            uint8_t p1 = key_p1 | pad_p[0], p2 = key_p2 | pad_p[1], sys = key_sys | pad_sys;
-            script_input(f, &p1, &p2, &sys);
-            ng_set_input(p1, p2, sys);
-            script_pokes(f);
-            ng_run_frame(fb);
-            f++;
-            int n;
-            while ((n = audio_read_samples(abuf, 8192)) > 0) {
-                if (wavf) { fwrite(abuf, 4, (size_t)n, wavf); wav_frames += (uint32_t)n; }
-                if (adev) {
-                    /* keep latency bounded: drop audio if the queue grows beyond ~150 ms */
-                    if (SDL_GetQueuedAudioSize(adev) > (Uint32)(AUDIO_RATE * 4 * 15 / 100)) SDL_ClearQueuedAudio(adev);
-                    SDL_QueueAudio(adev, abuf, (Uint32)n * 4);
-                }
-            }
-        }
-        SDL_UpdateTexture(tex, NULL, fb, NG_SCREEN_W * 4);
-        SDL_RenderClear(ren);
-        SDL_RenderCopy(ren, tex, NULL, NULL);
-        SDL_RenderPresent(ren);
-
-        next += frame_ticks;
+    ui.win = win; ui.ren = ren; ui.tex = tex; ui.adev = adev; ui.npad = npad;
+    ui.pads[0] = pads[0]; ui.pads[1] = pads[1];
+    ui.freq = SDL_GetPerformanceFrequency();
+    ui.frame_ticks = (double)ui.freq / NG_FPS;
+    ui.next = (double)SDL_GetPerformanceCounter();
+    ui.running = 1;
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(web_tick, 0, 1);      /* the browser drives the loop; never returns */
+#else
+    while (ui.running && (!opt.frames || ui.f < opt.frames)) {
+        frame_step();
+        ui.next += ui.frame_ticks;
         double now = (double)SDL_GetPerformanceCounter();
-        if (next > now) SDL_Delay((Uint32)((next - now) * 1000.0 / (double)freq));
-        else if (now - next > frame_ticks * 10) next = now;     /* fell behind: resync */
+        if (ui.next > now) SDL_Delay((Uint32)((ui.next - now) * 1000.0 / (double)ui.freq));
+        else if (now - ui.next > ui.frame_ticks * 10) ui.next = now;     /* fell behind: resync */
     }
+#endif
     print_stats();
     wav_close();
     ng_save_nvram(opt.nvram);
     ng_shutdown();
-    if (adev) SDL_CloseAudioDevice(adev);
+    if (ui.adev) SDL_CloseAudioDevice(ui.adev);
     SDL_Quit();
     return 0;
 }

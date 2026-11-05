@@ -70,7 +70,8 @@ rea: $(ROMS)
 # ---- static recompiler ---------------------------------------------------------------------
 RECOMP_STAMP := $(B)/recomp/.stamp
 $(RECOMP_STAMP): tools/recomp/m68k_recomp.py $(B)/m68k_table.txt $(B)/m68kinfo $(ROMS) $(wildcard $(REA_IDX)) \
-                 $(wildcard tools/recomp/extra_seeds.txt) $(wildcard $(B)/recomp/runtime_misses.txt)
+                 $(wildcard tools/recomp/extra_seeds.txt) $(wildcard $(B)/recomp/runtime_misses.txt) \
+                 $(wildcard $(B)/disasm/p1.bin) $(wildcard $(B)/disasm/code_p1.txt)
 	python3 tools/recomp/m68k_recomp.py --files $(NFILES)
 	touch $@
 $(RC_C) $(B)/recomp/rc_tests.c: $(RECOMP_STAMP)
@@ -121,6 +122,7 @@ $(B)/disasm/exec_p1.bin: $(B)/kof97 $(wildcard games/$(GAME)/scripts/*.txt)
 matching: $(ROMS) $(B)/m68kinfo $(B)/m68k_table.txt $(B)/disasm/exec_p1.bin
 	python3 tools/disasm/mkasm.py --symbolize --out $(B)/disasm
 	python3 tools/disasm/mkrom.py --out $(B)/disasm
+	python3 tools/disasm/codemap.py
 # charmap: regenerate games/$(GAME)/symbols/chars.txt (character-specific code, mirror-match runs)
 charmap: $(B)/kof97 $(B)/m68kinfo $(B)/m68k_table.txt
 	python3 tools/disasm/charmap.py
@@ -146,4 +148,13 @@ shifttest: $(B)/kof97 $(B)/m68kinfo $(B)/m68k_table.txt
 clean:
 	rm -rf $(B)/obj $(B)/kof97 $(B)/rc_difftest $(B)/recomp/*.c $(RECOMP_STAMP)
 
-.PHONY: all rea recomp test clean matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap
+# ---- web build (Emscripten in $(EMSDK)) and the LAN-only development server ------------------
+EMSDK ?= $(HOME)/emsdk
+web: $(RC_C) $(MUSASHI)/m68kops.c $(B)/roms/p1.bin
+	bash -c 'source $(EMSDK)/emsdk_env.sh >/dev/null 2>&1 && $(MAKE) -f web.mk -j$(WEB_JOBS)'
+WEB_JOBS ?= 10
+WEB_PORT ?= 8097
+serve: web
+	python3 tools/web/serve.py --port $(WEB_PORT) --dir $(B)/web
+
+.PHONY: all rea recomp test clean web serve matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap
