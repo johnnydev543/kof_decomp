@@ -1,0 +1,270 @@
+{
+  "name": "kof97",
+  "title": "The King of Fighters '97 (MVS)",
+  "rom_zip": "roms/kof97.zip",
+  "bios_zip": "roms/neogeo.zip",
+  "roms": {
+    "p1": [
+      "232-p1.bin",
+      "7db81ad9"
+    ],
+    "p2": [
+      "232-p2.bin",
+      "158b23f6"
+    ],
+    "s1": [
+      "232-s1.bin",
+      "8514ecf5"
+    ],
+    "m1": [
+      "232-m1.bin",
+      "45348747"
+    ],
+    "v": [
+      [
+        "232-v1.bin",
+        "22a2b5b5"
+      ],
+      [
+        "232-v2.bin",
+        "2304e744"
+      ],
+      [
+        "232-v3.bin",
+        "759eb954"
+      ]
+    ],
+    "c": [
+      [
+        [
+          "232-c1.bin",
+          "5f8bf0a1"
+        ],
+        [
+          "232-c2.bin",
+          "e4d45c81"
+        ]
+      ],
+      [
+        [
+          "232-c3.bin",
+          "581d6618"
+        ],
+        [
+          "232-c4.bin",
+          "49bb1e68"
+        ]
+      ],
+      [
+        [
+          "232-c5.bin",
+          "34fc4e51"
+        ],
+        [
+          "232-c6.bin",
+          "4ff4d47b"
+        ]
+      ]
+    ]
+  },
+  "disasm": {
+    "_comment": "vblank_break: an instruction the game's VBlank handler always executes (after the BIOS/game dispatch); shift_inserts: instruction labels to insert the test nop before; a5_base: value of A5 for (d16,A5) RAM hints (null = none)",
+    "vblank_break": "9eb0",
+    "shift_inserts": [
+      "800",
+      "1e62",
+      "60d36"
+    ],
+    "a5_base": "108000",
+    "spawn_funcs": [
+      "30b2",
+      "1e374",
+      "7760"
+    ],
+    "_comment_spawn": "spawn_funcs: functions that take the new object's handler in A0 (obj_spawn, obj_spawn_child, obj_init_static); handler_fields: [address register, displacement] of fields that hold code addresses (object handler, scene handler, next state, callbacks)",
+    "handler_fields": [
+      [
+        4,
+        "0"
+      ],
+      [
+        5,
+        "500"
+      ],
+      [
+        4,
+        "198"
+      ],
+      [
+        4,
+        "19c"
+      ],
+      [
+        4,
+        "1a0"
+      ],
+      [
+        1,
+        "19c"
+      ],
+      [
+        1,
+        "1a0"
+      ],
+      [
+        0,
+        "1a0"
+      ],
+      [
+        4,
+        "134"
+      ],
+      [
+        4,
+        "8c"
+      ],
+      [
+        4,
+        "36"
+      ],
+      [
+        4,
+        "1e8"
+      ]
+    ]
+  },
+  "objects": {
+    "_comment": "whowrote.py: the object dispatcher (jsr (A0) with A4 = object) and the instruction that stores a new object's handler",
+    "dispatch": "9de4",
+    "spawn_store": "30cc"
+  },
+  "ram": {
+    "_comment": "work RAM used by the coverage / naming scripts (gen_scripts.py, charmap.py, actionmap.py, specmap.py)",
+    "p1_team": "10a84b",
+    "p2_team": "10a85c",
+    "p1_mode": "10a849",
+    "p1_orochi": "10a857",
+    "p1_health": "108238",
+    "p2_health": "108438",
+    "p2_health_drain": "10843a"
+  },
+  "characters": {
+    "_comment": "character ids in order (charmap/specmap/chrcheck names); base: Orochi versions that share code with the base character; moves_p2: character P2 is poked to in the moves_* scripts",
+    "names": [
+      "kyo",
+      "benimaru",
+      "daimon",
+      "terry",
+      "andy",
+      "joe",
+      "ryo",
+      "robert",
+      "yuri",
+      "leona",
+      "ralf",
+      "clark",
+      "athena",
+      "kensou",
+      "chin",
+      "chizuru",
+      "mai",
+      "king",
+      "kim",
+      "chang",
+      "choi",
+      "yashiro",
+      "shermie",
+      "chris",
+      "yamazaki",
+      "mary",
+      "billy",
+      "iori",
+      "orochi_iori",
+      "orochi_leona",
+      "orochi",
+      "shingo"
+    ],
+    "base": {
+      "28": 27,
+      "29": 9
+    },
+    "moves_p2": [
+      1
+    ]
+  },
+  "naming": {
+    "_comment": "not_character: generic code that one character happened to trigger in the generator runs (chrcheck.py drops chr_ labels there); throw_table: per-move throw handler table (index = throw record byte 0)",
+    "not_character": [
+      [
+        "006e00",
+        "0070c0",
+        "fix-layer print helpers"
+      ],
+      [
+        "015a00",
+        "015c00",
+        "hit message HUD: GUARD CRUSH / COUNTER / CRITICAL HIT"
+      ],
+      [
+        "02cfe0",
+        "02fc00",
+        "CPU AI (cpu_generate_input, opcode handlers of CPU_AI_OP_TABLE)"
+      ],
+      [
+        "067500",
+        "06d600",
+        "stage background objects from the spawn lists D_0aceb0"
+      ]
+    ],
+    "throw_table": "196ec"
+  },
+  "moves": {
+    "_comment": "moves.tsv character headings (MAME command.dat) -> label names; tsv_char / orochi_alt map commands.tsv rows to them",
+    "char_map": {
+      "KYO KUSANAGI": "kyo",
+      "BENIMARU NIKAIDO": "benimaru",
+      "GORO DAIMON": "daimon",
+      "TERRY BOGARD": "terry",
+      "ANDY BOGARD": "andy",
+      "JOE HIGASHI": "joe",
+      "RYO SAKAZAKI": "ryo",
+      "ROBERT GARCIA": "robert",
+      "YURI SAKAZAKI": "yuri",
+      "LEONA HEIDERN": "leona",
+      "RALF JONES": "ralf",
+      "CLARK STILL": "clark",
+      "ATHENA ASAMIYA": "athena",
+      "SIE KENSOU": "kensou",
+      "CHIN GENTSAI": "chin",
+      "CHIZURU KAGURA": "chizuru",
+      "MAI SHIRANUI": "mai",
+      "KING": "king",
+      "KIM KAPHWAN": "kim",
+      "CHANG KOEHAN": "chang",
+      "CHOI BOUNGE": "choi",
+      "YASHIRO NANAKASE": "yashiro",
+      "SHERMIE": "shermie",
+      "CHRIS": "chris",
+      "RYUJI YAMAZAKI": "yamazaki",
+      "BLUE MARY": "mary",
+      "BILLY KANE": "billy",
+      "IORI YAGAMI": "iori",
+      "SHINGO YABUKI": "shingo",
+      "OROCHI IORI": "oiori",
+      "OROCHI LEONA": "oleona",
+      "OROCHI YASHIRO": "oyashiro",
+      "OROCHI SHERMIE": "oshermie",
+      "OROCHI CHRIS": "ochris",
+      "OROCHI": "orochi"
+    },
+    "tsv_char": {
+      "orochi_iori": "oiori",
+      "orochi_leona": "oleona"
+    },
+    "orochi_alt": {
+      "yashiro": "oyashiro",
+      "shermie": "oshermie",
+      "chris": "ochris"
+    }
+  }
+}

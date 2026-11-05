@@ -1,0 +1,8 @@
+# KOF97 P1 (68000, mapped at 0x000000) analysis seeds for REA_GHIDRA_SEED_FILE
+0x122	function	USER
+0x128	function	PLAYER_START
+0x12e	function	DEMO_END
+0x134	function	COIN_SOUND
+0x192	function	vec05_192
+0x9ea2	function	vec25_9ea2
+0x9f5e	function	vec26_9f5e

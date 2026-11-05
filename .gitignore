@@ -1,0 +1,9 @@
+build/
+kof97.nvram
+kof97_shot_*.ppm
+# user-supplied ROM sets: never commit (see AGENT.md)
+roms/*.zip
+.DS_Store
+__pycache__/
+*.pyc
+HANDOFF.md

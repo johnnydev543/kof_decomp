@@ -1,0 +1,421 @@
+# Per-character command checks (player +0x194 slots: +0 throw, +4 air throw, +8 specials) decoded from the check
+# routines (motion bit -> next_state, throw record index); see AGENT.md 7.5. Columns as in the header line.
+char_id	char	routine	slot	motion	buttons	next_state	result	conditions	next_state_current_label
+0	kyo	019e3c	8	qcf2	AC	0315f8	1	!alt1d6 !air	chr_kyo_dm_qcf2_p_0315f8
+0	kyo	019e3c	8	qcb_hcf	AC	031168	1	!alt1d6 !air	chr_kyo_dm_qcb_hcf_p_031168
+0	kyo	019e3c	8	rdp	BD	02feda	1	!alt1d6 !air	chr_kyo_rdp_k_02feda
+0	kyo	019e3c	8	hcb	BD	030026	1	!alt1d6 !air	chr_kyo_hcb_k_030026
+0	kyo	019e3c	8	dp	AC	02fcf0	1	!alt1d6 !air	chr_kyo_dp_p_02fcf0
+0	kyo	019e3c	8	qcf	BD	03044e	1	!alt1d6 !air	chr_kyo_qcf_k_hop
+0	kyo	019e3c	8	qcf	A	030656	1	!alt1d6 !air	chr_kyo_qcf_a_rush
+0	kyo	019e3c	8	qcf	C	030c5e	1	!alt1d6 !air	chr_kyo_030c5e
+0	kyo	019e3c	8	qcb	AC	030ff4	1	!alt1d6 !air	chr_kyo_030ff4
+0	kyo	019e3c	8	f+B	-	032244	2	!alt1d6 !air	chr_kyo_032244
+0	kyo	019e3c	8	df+D	-	0322d8	2	!alt1d6 !air	L_0322d8
+0	kyo	019e3c	8	d+C	-	032360	2	!alt1d6 air	chr_kyo_032360
+0	kyo	019e3c	8	qcb_hcf	AC	031168	1	alt1d6 !air	chr_kyo_dm_qcb_hcf_p_031168
+0	kyo	019e3c	8	rdp	BD	031d12	1	alt1d6 !air	L_031d12
+0	kyo	019e3c	8	dp	AC	031eba	1	alt1d6 !air	L_031eba
+0	kyo	019e3c	8	qcf	AC	031b30	1	alt1d6 !air	L_031b30
+0	kyo	019e3c	8	f+B	-	032244	2	alt1d6 !air	chr_kyo_032244
+0	kyo	019e3c	8	df+D	-	0322d8	2	alt1d6 !air	L_0322d8
+0	kyo	019e3c	8	d+C	-	032360	2	alt1d6 air	chr_kyo_032360
+0	kyo	019df8	0	throw(b/f+btn)	C	throw:01de70/idx01	rts		
+0	kyo	019df8	0	throw(b/f+btn)	D	throw:01de76/idx02	rts		
+1	benimaru	01a106	8	hcb2	AC	0195e4 throw:01e092/idx65	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+1	benimaru	01a106	8	qcf2	AC	033316	1	!air	chr_benimaru_dm_qcf2_p_033316
+1	benimaru	01a106	8	hcb_f	AC	0195e4 throw:01e08c/idx64	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+1	benimaru	01a106	8	dp	BD	032a44	1	!air	chr_benimaru_dp_k_032a44
+1	benimaru	01a106	8	hcb	BD	032ec2	1	!air	chr_benimaru_hcb_k_032ec2
+1	benimaru	01a106	8	qcb	AC	032914	1	!air	chr_benimaru_qcb_p_hop
+1	benimaru	01a106	8	qcf	AC	032506	1	!air	chr_benimaru_qcf_p_032506
+1	benimaru	01a106	8	qcf	BD	032c00	1	!air	chr_benimaru_032c00
+1	benimaru	01a106	8	f+B	-	033e46	2	!air	chr_benimaru_fwd_b_hop
+1	benimaru	01a106	8	qcf	AC	0326ae	1	air	L_0326ae
+1	benimaru	01a106	8	d+D	-	033f40	2	air	chr_benimaru_033f40
+1	benimaru	01a0e2	4	airthrow(btn)	CD	throw:01de88/idx05	rts		
+1	benimaru	01a09e	0	throw(b/f+btn)	C	throw:01de7c/idx03	rts		
+1	benimaru	01a09e	0	throw(b/f+btn)	D	throw:01de82/idx04	rts		
+2	daimon	01a340	8	hcb2	AC	0195e4 throw:01e04a/idx59	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+2	daimon	01a340	8	hcf2	BD	0195e4 throw:01e0d4/idx70	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+2	daimon	01a340	8	hcb_f	BD	034a5e	1	!air	chr_daimon_w_hcf_k_034a5e
+2	daimon	01a340	8	hcb_f	AC	0195e4 throw:01e03e/idx57	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+2	daimon	01a340	8	hcf	A	03432c	1	!air	chr_daimon_hcf_p_03432c
+2	daimon	01a340	8	hcf	C	03471a	1	!air	chr_daimon_03471a
+2	daimon	01a340	8	dp	AC	034118	1	!air	chr_daimon_dp_p_034118
+2	daimon	01a340	8	dp	BD	0195e4 throw:01e0da/idx71	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+2	daimon	01a340	8	qcb	BD	034250	1	!air	chr_daimon_034250
+2	daimon	01a340	8	qcf	BD	03487c	1	!air	chr_daimon_qcf_k_03487c
+2	daimon	01a340	8	f+A	-	03621a	2	!air	L_03621a
+2	daimon	01a340	8	df+C	-	036290	2	!air	chr_daimon_036290
+2	daimon	01a2e2	0	throw(b/f+btn)	C	throw:01de94/idx07	rts	!bcs.w cmpi.w #0x30,(0xbc,%a4)	
+2	daimon	01a2e2	0	throw(b/f+btn)	C	throw:01de8e/idx06	rts	bcs.w cmpi.w #0x30,(0xbc,%a4)	
+2	daimon	01a2e2	0	throw(b/f+btn)	D	throw:01de9a/idx08	rts		
+3	terry	01a58e	8	qcf2	BD	036ec6	1	!air	chr_terry_dm_qcf2_k_036ec6
+3	terry	01a58e	8	qcb_dbf	AC	036cf6	1	!air	chr_terry_036cf6
+3	terry	01a58e	8	dp	AC	0368ba	1	!air	chr_terry_dp_p_0368ba
+3	terry	01a58e	8	dp	BD	036a7c	1	!air	chr_terry_dp_k_036a7c
+3	terry	01a58e	8	hcf	BD	03716a	1	!air	chr_terry_hcf_k_03716a
+3	terry	01a58e	8	qcb	AC	03641a	1	!air	chr_terry_dash_punch
+3	terry	01a58e	8	qcb	BD	03676e	1	!air	L_03676e
+3	terry	01a58e	8	qcf	AC	0365f6	1	!air	chr_terry_ground_wave
+3	terry	01a58e	8	f+A	-	037442	2	!air	chr_terry_037442
+3	terry	01a58e	8	df+C	-	0374b8	2	!air	chr_terry_df_c_attack
+3	terry	01a546	0	throw(b/f+btn)	C	throw:01dea0/idx09	rts		
+3	terry	01a546	0	throw(b/f+btn)	D	throw:01dea6/idx0a	rts		
+4	andy	01a718	8	qcb_hcf	BD	038272	1	!air	chr_andy_dm_qcb_hcf_k_038272
+4	andy	01a718	8	qcf2	AC	03845c	1	!air	chr_andy_dm_qcf2_p_03845c
+4	andy	01a718	8	hcf	BD	037bf4	1	!air	chr_andy_hcf_k_037bf4
+4	andy	01a718	8	hcf	AC	0195e4 throw:01e02c/idx54	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+4	andy	01a718	8	dp	AC	037aaa	1	!air	chr_andy_dp_p_037aaa
+4	andy	01a718	8	qcb	AC	0378e6	1	!air	chr_andy_qcb_p_projectile
+4	andy	01a718	8	db_f	AC	03763c	1	!air	chr_andy_dash_elbow
+4	andy	01a718	8	f+B	-	0389a6	2	!air	L_0389a6
+4	andy	01a718	8	qcf	BD	037f06	1	air	L_037f06
+4	andy	01a6d0	0	throw(b/f+btn)	C	throw:01deac/idx0b	rts		
+4	andy	01a6d0	0	throw(b/f+btn)	D	throw:01deb2/idx0c	rts		
+5	joe	01a8d8	8	qcf2	AC	039624	1	!air	chr_joe_dm_qcf2_p_039624
+5	joe	01a8d8	8	qcf_hcb	AC	039a56	1	!air	chr_joe_dm_qcf_hcb_p_039a56
+5	joe	01a8d8	8	hcf	AC	038bb0	1	!air	chr_joe_hcf_p_038bb0
+5	joe	01a8d8	8	hcf	BD	03932a	1	!air	chr_joe_hcf_k_03932a
+5	joe	01a8d8	8	dp	BD	0391a2	1	!air	chr_joe_dp_k_0391a2
+5	joe	01a8d8	8	qcb	BD	0394cc	1	!air	chr_joe_leaping_kick
+5	joe	01a8d8	8	mash_AC	ABCD	038ebe	1	!air	chr_joe_038ebe
+5	joe	01a8d8	8	f+B	-	03a2a0	2	!air	chr_joe_03a2a0
+5	joe	01a8d8	8	df+B	-	03a316	2	!air	chr_joe_03a316
+5	joe	01a890	0	throw(b/f+btn)	C	throw:01deb8/idx0d	rts		
+5	joe	01a890	0	throw(b/f+btn)	D	throw:01debe/idx0e	rts		
+6	ryo	01aa58	8	qcf2	AC	03b542	1	!air	chr_ryo_dm_qcf2_p_03b542
+6	ryo	01aa58	8	qcf_hcb	AC	03aeac	1	!air	chr_ryo_dm_qcf_hcb_p_03aeac
+6	ryo	01aa58	8	f_hcf	AC	03b32a	1	!air	chr_ryo_w_hcf_p_03b32a
+6	ryo	01aa58	8	hcf	AC	0195e4 throw:01e032/idx55	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+6	ryo	01aa58	8	hcb	BD	03a7fe	1	!air	chr_ryo_hcb_k_03a7fe
+6	ryo	01aa58	8	dp	AC	03a68c	1	!air	chr_ryo_dp_p_03a68c
+6	ryo	01aa58	8	qcb	AC	03acfc	1	!air	chr_ryo_03acfc
+6	ryo	01aa58	8	qcf	AC	03a51a	1	!air	chr_ryo_qcf_p_03a51a
+6	ryo	01aa58	8	qcf	BD	03a9c2	1	!air	L_03a9c2
+6	ryo	01aa58	8	f+A	-	03b8a2	2	!air	chr_ryo_03b8a2
+6	ryo	01aa10	0	throw(b/f+btn)	C	throw:01dec4/idx0f	rts		
+6	ryo	01aa10	0	throw(b/f+btn)	D	throw:01deca/idx10	rts		
+7	robert	01ac4a	8	qcf2	BD	03c892	1	!air	chr_robert_dm_qcf2_k_03c892
+7	robert	01ac4a	8	qcf_hcb	AC	03c200	1	!air	chr_robert_dm_qcf_hcb_p_03c200
+7	robert	01ac4a	8	f_hcf	AC	03c67a	1	!air	chr_robert_w_hcf_p_03c67a
+7	robert	01ac4a	8	dp	AC	03bb9e	1	!air	chr_robert_dp_p_03bb9e
+7	robert	01ac4a	8	dp	BD	03c0d0	1	!air	chr_robert_dp_k_03c0d0
+7	robert	01ac4a	8	qcf	AC	03ba3e	1	!air	chr_robert_qcf_p_03ba3e
+7	robert	01ac4a	8	hcf	BD	0195e4 throw:01e038/idx56	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+7	robert	01ac4a	8	hcb	BD	03bd0a	1	!air	chr_robert_hcb_k_03bd0a
+7	robert	01ac4a	8	f+B	-	03ce04	2	!air	chr_robert_03ce04
+7	robert	01ac4a	8	qcb	BD	03be66	1	air	chr_robert_air_dive_kick
+7	robert	01ac02	0	throw(b/f+btn)	C	throw:01ded0/idx11	rts		
+7	robert	01ac02	0	throw(b/f+btn)	D	throw:01ded6/idx12	rts		
+8	yuri	01ae5c	8	qcf2	AC	03e62a	1	!air	chr_yuri_dm_qcf2_p_03e62a
+8	yuri	01ae5c	8	qcf_hcb	BD	03ddea	1	!air	chr_yuri_dm_qcf_hcb_k_03ddea
+8	yuri	01ae5c	8	f_hcf	AC	03e3fc	1	!air	chr_yuri_dm_big_fireball
+8	yuri	01ae5c	8	hcb	AC	03d9e6	1	!air	chr_yuri_hcb_p_03d9e6
+8	yuri	01ae5c	8	dp	AC	03d102	1	!air	chr_yuri_dp_p_03d102
+8	yuri	01ae5c	8	qcb	AC	03db2c	1	!air	chr_yuri_qcb_p_03db2c
+8	yuri	01ae5c	8	qcb	BD	03dca2	1	!air	chr_yuri_qcb_k_leap
+8	yuri	01ae5c	8	qcf	AC	03cf90	1	!air	chr_yuri_qcf_p_03cf90
+8	yuri	01ae5c	8	qcf	BD	03d464	1	!air	chr_yuri_03d464
+8	yuri	01ae5c	8	f+B	-	03ed68	2	!air	chr_yuri_03ed68
+8	yuri	01ae38	4	airthrow(btn)	CD	throw:01dee8/idx15	rts		
+8	yuri	01adf4	0	throw(b/f+btn)	C	throw:01dedc/idx13	rts		
+8	yuri	01adf4	0	throw(b/f+btn)	D	throw:01dee2/idx14	rts		
+9	leona	01b026	8	chg_du	AC	03ef74	1	!air	chr_leona_chg_du_p_03ef74
+9	leona	01b026	8	chg_du	BD	03f442	1	!air	chr_leona_chg_du_k_03f442
+9	leona	01b026	8	chg_bf	BD	03f07e	1	!air	chr_leona_chg_bf_k_03f07e
+9	leona	01b026	8	chg_bf	AC	03f6a4	1	!air	chr_leona_chg_bf_p_03f6a4
+9	leona	01b026	8	qcf2	AC	0403e0	1	!air	L_0403e0
+9	leona	01b026	8	qcb_hcf	BD	03f9f8	1	!air	chr_leona_dm_qcb_hcf_k_03f9f8
+9	leona	01b026	8	qcb	AC	0407dc	1	!air	chr_leona_0407dc
+9	leona	01b026	8	qcf_hcb	AC	03fdd8	1	air	L_03fdd8
+9	leona	01b002	4	airthrow(btn)	CD	throw:01defa/idx18	rts		
+9	leona	01afbe	0	throw(b/f+btn)	C	throw:01deee/idx16	rts		
+9	leona	01afbe	0	throw(b/f+btn)	D	throw:01def4/idx17	rts		
+10	ralf	01b1b8	8	qcf_hcb	AC	041a70	1	!air	chr_ralf_dm_qcf_hcb_p_041a70
+10	ralf	01b1b8	8	qcb_hcf	BD	041cf4	1	!air	chr_ralf_dm_qcb_hcf_k_041cf4
+10	ralf	01b1b8	8	chg_du	AC	04137c	1	!air	chr_ralf_chg_du_p_04137c
+10	ralf	01b1b8	8	chg_bf	AC	0411ba	1	!air	chr_ralf_chg_bf_p_0411ba
+10	ralf	01b1b8	8	chg_bf	BD	041906	1	!air	chr_ralf_chg_bf_k_041906
+10	ralf	01b1b8	8	qcf2	AC	042290	1	!air	chr_ralf_dm_qcf2_p_042290
+10	ralf	01b1b8	8	hcf	BD	0195e4 throw:01e068/idx5e	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+10	ralf	01b1b8	8	mash_AC	ABCD	04101e	1	!air	chr_ralf_04101e
+10	ralf	01b1b8	8	qcf	AC	0415d0	1	air	L_0415d0
+10	ralf	01b170	0	throw(b/f+btn)	C	throw:01df00/idx19	rts		
+10	ralf	01b170	0	throw(b/f+btn)	D	throw:01df06/idx1a	rts		
+11	clark	01b3a0	8	hcb2	AC	0195e4 throw:01e074/idx60	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+11	clark	01b3a0	8	hcf2	BD	043c78	1	!air	chr_clark_dm_run_grab_k
+11	clark	01b3a0	8	hcf	AC	042aa2	1	!air	chr_clark_hcf_p_042aa2
+11	clark	01b3a0	8	hcf	BD	0195e4 throw:01e06e/idx5f	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+11	clark	01b3a0	8	dp	AC	0431ae	1	!air	chr_clark_dp_p_0431ae
+11	clark	01b3a0	8	dp	BD	044204	1	!air	chr_clark_dp_k_044204
+11	clark	01b3a0	8	mash_AC	ABCD	042844	1	!air	chr_clark_042844
+11	clark	01b3a0	8	f+B	-	04467c	2	!air	chr_clark_04467c
+11	clark	01b37c	4	airthrow(btn)	CD	throw:01dfea/idx40	rts		
+11	clark	01b338	0	throw(b/f+btn)	C	throw:01df0c/idx1b	rts		
+11	clark	01b338	0	throw(b/f+btn)	D	throw:01df12/idx1c	rts		
+12	athena	01b54e	8	b_hcb	AC	0455d4	1	!air	chr_athena_dm_w_hcb2_p_0455d4
+12	athena	01b54e	8	hcf	C	0195e4 throw:01e050/idx5a	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+12	athena	01b54e	8	hcb	BD	044c4e	1	!air	chr_athena_hcb_k_044c4e
+12	athena	01b54e	8	dp	AC	044f12	1	!air	chr_athena_dp_p_044f12
+12	athena	01b54e	8	qcb	AC	04480e	1	!air	chr_athena_04480e
+12	athena	01b54e	8	qcf	BD	045386	1	!air	chr_athena_045386
+12	athena	01b54e	8	f+B	-	046bc0	2	!air	chr_athena_046bc0
+12	athena	01b54e	8	qcf2	AC	04638e	1	air	L_04638e
+12	athena	01b54e	8	b_hcb	AC	045fca	1	air	L_045fca
+12	athena	01b54e	8	dp	AC	044f12	1	air	chr_athena_dp_p_044f12
+12	athena	01b54e	8	qcb	AC	0449ba	1	air	chr_athena_0449ba
+12	athena	01b54e	8	d+B	-	046cba	2	air	L_046cba
+12	athena	01b52a	4	airthrow(btn)	CD	throw:01df24/idx1f	rts		
+12	athena	01b4e6	0	throw(b/f+btn)	C	throw:01df18/idx1d	rts		
+12	athena	01b4e6	0	throw(b/f+btn)	D	throw:01df1e/idx1e	rts		
+13	kensou	01b79c	8	qcf2	AC	0195e4 throw:01e0b0/idx6a	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+13	kensou	01b79c	8	qcb2	AC	0481f4	1	!air	L_0481f4
+13	kensou	01b79c	8	qcf_hcb	B	047bd2	1	!air	chr_kensou_dm_qcf_hcb_k_047bd2
+13	kensou	01b79c	8	qcf_hcb	D	047884	1	!air	L_047884
+13	kensou	01b79c	8	hcf	A	04722a	1	!air	chr_kensou_hcf_p_04722a
+13	kensou	01b79c	8	hcf	C	0473c6	1	!air	chr_kensou_hcf_c_lunge
+13	kensou	01b79c	8	dp	AC	0195e4 throw:01e0aa/idx69	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+13	kensou	01b79c	8	rdp	BD	0470b8	1	!air	chr_kensou_rdp_k_0470b8
+13	kensou	01b79c	8	qcb	AC	046f1e	1	!air	chr_kensou_046f1e
+13	kensou	01b79c	8	f+A	-	0485e2	2	!air	chr_kensou_0485e2
+13	kensou	01b79c	8	f+B	-	048668	2	!air	chr_kensou_048668
+13	kensou	01b79c	8	qcb	AC	0474ec	1	air	chr_kensou_air_dive_punch
+13	kensou	01b754	0	throw(b/f+btn)	C	throw:01df2a/idx20	rts		
+13	kensou	01b754	0	throw(b/f+btn)	D	throw:01df30/idx21	rts		
+14	chin	01b9de	8	qcf_hcb	AC	049440	1	!air	chr_chin_dm_qcf_hcb_p_049440
+14	chin	01b9de	8	qcf2	AC	049180	1	!air	chr_chin_dm_qcf2_p_049180
+14	chin	01b9de	8	hcf	BD	048b20	1	!air	chr_chin_hcf_k_048b20
+14	chin	01b9de	8	dp	AC	0489d4	1	!air	chr_chin_dp_p_0489d4
+14	chin	01b9de	8	qcb	AC	048886	1	!air	chr_chin_048886
+14	chin	01b9de	8	qcb	BD	048e54	1	!air	chr_chin_qcb_k_stance
+14	chin	01b9de	8	qcf	AC	048c56	1	!air	chr_chin_048c56
+14	chin	01b9de	8	f+A	-	049a32	2	!air	L_049a32
+14	chin	01b996	0	throw(b/f+btn)	C	throw:01df36/idx22	rts		
+14	chin	01b996	0	throw(b/f+btn)	D	throw:01df3c/idx23	rts		
+15	chizuru	01bb4c	8	qcf2	BD	04ac56	1	!air	chr_chizuru_dm_qcf2_k_04ac56
+15	chizuru	01bb4c	8	qcb_hcf	AC	04a9e6	1	!air	chr_chizuru_dm_qcb_hcf_p_04a9e6
+15	chizuru	01bb4c	8	hcf	AC	04a83e	1	!air	chr_chizuru_hcf_p_04a83e
+15	chizuru	01bb4c	8	hcb	AC	04a07c	1	!air	chr_chizuru_hcb_p_04a07c
+15	chizuru	01bb4c	8	hcb	BD	04a7c4	1	!air	chr_chizuru_hcb_k_04a7c4
+15	chizuru	01bb4c	8	dp	AC	049bd6	1	!air	chr_chizuru_dp_p_049bd6
+15	chizuru	01bb4c	8	qcf	ABCD	04af20	1	!air	chr_chizuru_04af20
+15	chizuru	01bb04	0	throw(b/f+btn)	C	throw:01df42/idx24	rts		
+15	chizuru	01bb04	0	throw(b/f+btn)	D	throw:01df48/idx25	rts		
+16	mai	01bcba	8	qcf2	AC	04c7ec	1	!air	chr_mai_dm_qcf2_p_04c7ec
+16	mai	01bcba	8	qcb2	AC	04c566	1	!air	chr_mai_dm_leap_dive
+16	mai	01bcba	8	qcb_hcf	BD	04c358	1	!air	chr_mai_dm_qcb_hcf_k_04c358
+16	mai	01bcba	8	hcf	BD	04bdb2	1	!air	chr_mai_hcf_k_04bdb2
+16	mai	01bcba	8	chg_du	AC	04bf16	1	!air	chr_mai_chg_du_p_04bf16
+16	mai	01bcba	8	dp	BD	04bbd6	1	!air	chr_mai_dp_k_04bbd6
+16	mai	01bcba	8	dp	AC	04c228	1	!air	chr_mai_dp_p_04c228
+16	mai	01bcba	8	qcb	AC	04ba80	1	!air	chr_mai_04ba80
+16	mai	01bcba	8	qcf	AC	04b88e	1	!air	chr_mai_04b88e
+16	mai	01bcba	8	df+B	-	04ce96	2	!air	L_04ce96
+16	mai	01bcba	8	qcb	AC	04c1aa	1	air	chr_mai_04c1aa
+16	mai	01bc96	4	airthrow(btn)	CD	throw:01df5a/idx28	rts		
+16	mai	01bc52	0	throw(b/f+btn)	C	throw:01df4e/idx26	rts		
+16	mai	01bc52	0	throw(b/f+btn)	D	throw:01df54/idx27	rts		
+17	king	01bebe	8	qcb2	BD	04ddd0	1	!air	chr_king_04ddd0
+17	king	01bebe	8	qcf_hcb	BD	04da12	1	!air	chr_king_dm_qcf_hcb_k_04da12
+17	king	01bebe	8	qcf2	BD	04d26e	1	!air	chr_king_dm_qcf2_k_04d26e
+17	king	01bebe	8	hcb	BD	04d534	1	!air	chr_king_hcb_k_04d534
+17	king	01bebe	8	hcf	BD	04d8aa	1	!air	chr_king_hcf_k_04d8aa
+17	king	01bebe	8	dp	AC	04d6c2	1	!air	chr_king_dp_p_leap_dive
+17	king	01bebe	8	dp	BD	04d40a	1	!air	chr_king_dp_k_04d40a
+17	king	01bebe	8	qcf	BD	04d0b6	1	!air	chr_king_qcf_k_04d0b6
+17	king	01bebe	8	df+D	-	04e1b2	2	!air	chr_king_04e1b2
+17	king	01be72	0	throw(b/f+btn)	C	throw:01df60/idx29	rts		
+17	king	01be72	0	throw(b/f+btn)	D	throw:01df66/idx2a	rts		
+18	kim	01c06c	8	chg_bf	BD	04e83a	1	!air	chr_kim_chg_bf_k_04e83a
+18	kim	01c06c	8	chg_du	AC	04ea20	1	!air	chr_kim_chg_du_p_04ea20
+18	kim	01c06c	8	chg_du	BD	04e3b6	1	!air	chr_kim_chg_du_k_04e3b6
+18	kim	01c06c	8	qcb_dbf	BD	04eb7e	1	!air	L_04eb7e
+18	kim	01c06c	8	qcb	BD	04e596	1	!air	chr_kim_04e596
+18	kim	01c06c	8	f+B	-	04f724	2	!air	chr_kim_04f724
+18	kim	01c06c	8	f+A	-	04f7aa	2	!air	chr_kim_04f7aa
+18	kim	01c06c	8	qcb_dbf	BD	04effe	1	air	L_04effe
+18	kim	01c06c	8	qcf_hcb	BD	04f0bc	1	air	L_04f0bc
+18	kim	01c06c	8	qcf	BD	04e6c8	1	air	chr_kim_04e6c8
+18	kim	01c024	0	throw(b/f+btn)	C	throw:01df6c/idx2b	rts		
+18	kim	01c024	0	throw(b/f+btn)	D	throw:01df72/idx2c	rts		
+19	chang	01c21c	8	qcf2	AC	0507ac	1	!air	chr_chang_dm_qcf2_p_0507ac
+19	chang	01c21c	8	qcf_hcb	AC	050226	1	!air	chr_chang_dm_qcf_hcb_p_050226
+19	chang	01c21c	8	chg_bf	A	04f9b6	1	!air	chr_chang_chg_bf_p_04f9b6
+19	chang	01c21c	8	chg_bf	C	04fa3e	1	!air	chr_chang_chg_bf_c_rush
+19	chang	01c21c	8	chg_du	BD	04fe14	1	!air	chr_chang_chg_du_k_04fe14
+19	chang	01c21c	8	hcb_f	C	0195e4 throw:01e062/idx5d	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+19	chang	01c21c	8	mash_AC	ABCD	04fb56	1	!air	chr_chang_04fb56
+19	chang	01c21c	8	df+A	-	050de4	2	!air	chr_chang_050de4
+19	chang	01c1d4	0	throw(b/f+btn)	C	throw:01df78/idx2d	rts		
+19	chang	01c1d4	0	throw(b/f+btn)	D	throw:01df7e/idx2e	rts		
+20	choi	01c3ae	8	hcb2	AC	051d8a	1	!air	chr_choi_dm_w_hcb2_p_051d8a
+20	choi	01c3ae	8	chg_bf	AC	051af2	1	!air	chr_choi_chg_bf_p_051af2
+20	choi	01c3ae	8	chg_bf	BD	0517e2	1	!air	chr_choi_chg_bf_k_0517e2
+20	choi	01c3ae	8	chg_du	AC	050fdc	1	!air	chr_choi_chg_du_p_050fdc
+20	choi	01c3ae	8	chg_du	BD	051254	1	!air	chr_choi_chg_du_k_051254
+20	choi	01c3ae	8	qcf_hcb	BD	052026	1	!air	chr_choi_dm_qcf_hcb_k_052026
+20	choi	01c3ae	8	f+A	-	052862	2	!air	chr_choi_052862
+20	choi	01c3ae	8	f+B	-	05294a	2	!air	chr_choi_05294a
+20	choi	01c3ae	8	qcf	BD	051670	1	air	chr_choi_air_dive_kick
+20	choi	01c366	0	throw(b/f+btn)	C	throw:01df84/idx2f	rts		
+20	choi	01c366	0	throw(b/f+btn)	D	throw:01e01a/idx48	rts		
+21	yashiro	01c514	8	qcf2	AC	054874	1	!alt1d6 !cpu !air	chr_yashiro_dm_qcf2_p_054874
+21	yashiro	01c514	8	qcb_hcf	AC	054656	1	!alt1d6 !cpu !air	L_054656
+21	yashiro	01c514	8	hcb	AC	054578	1	!alt1d6 !cpu !air	chr_yashiro_hcb_p_054578
+21	yashiro	01c514	8	hcf	AC	052e32	1	!alt1d6 !cpu !air	chr_yashiro_hcf_p_052e32
+21	yashiro	01c514	8	dp	AC	052b44	1	!alt1d6 !cpu !air	chr_yashiro_dp_p_052b44
+21	yashiro	01c514	8	qcb	AC	052d08	1	!alt1d6 !cpu !air	chr_yashiro_qcb_p_052d08
+21	yashiro	01c514	8	f+B	-	054d98	2	!alt1d6 !cpu !air	chr_yashiro_054d98
+21	yashiro	01c514	8	cpubit6.0	AC	054aa6	1	!alt1d6 cpu !air	chr_yashiro_054aa6
+21	yashiro	01c514	8	cpubit6.4	AC	054aa6	1	!alt1d6 cpu !air	chr_yashiro_054aa6
+21	yashiro	01c514	8	cpubit6.2	AC	052e32	1	!alt1d6 cpu !air	chr_yashiro_hcf_p_052e32
+21	yashiro	01c514	8	cpubit5.2	AC	0195e4 throw:01e14c/idx84	1	!alt1d6 cpu !air !opp_air cmd:player_throw_try_grab	L_0195e4
+21	yashiro	01c514	8	cpubit5.4	BD	054578	1	!alt1d6 cpu !air	chr_yashiro_hcb_p_054578
+21	yashiro	01c514	8	cpubit5.4	AC	0195e4 throw:01e152/idx85	1	!alt1d6 cpu !air !opp_air cmd:player_throw_try_grab	L_0195e4
+21	yashiro	01c514	8	cpubit5.6	AC	052d08	1	!alt1d6 cpu !air	chr_yashiro_qcb_p_052d08
+21	yashiro	01c514	8	f+B	-	054d98	2	!alt1d6 cpu !air	chr_yashiro_054d98
+21	yashiro	01c514	8	hcb2	AC	0195e4 throw:01e13a/idx81	1	alt1d6 !air !opp_air cmd:player_throw_try_grab	L_0195e4
+21	yashiro	01c514	8	hcf2	AC	0195e4 throw:01e140/idx82	1	alt1d6 !air !opp_air cmd:player_throw_try_grab	L_0195e4
+21	yashiro	01c514	8	qcf2	AC	05428e	1	alt1d6 !air	L_05428e
+21	yashiro	01c514	8	hcb_f	AC	0195e4 throw:01e122/idx7d	1	alt1d6 !air !opp_air cmd:player_throw_try_grab	L_0195e4
+21	yashiro	01c514	8	hcf	BD	05346a	1	alt1d6 !air	L_05346a
+21	yashiro	01c514	8	hcf	AC	0195e4 throw:01e128/idx7e	1	alt1d6 !air !opp_air cmd:player_throw_try_grab	L_0195e4
+21	yashiro	01c514	8	qcb	AC	053804	1	alt1d6 !air	chr_oyashiro_qcb_p_hop
+21	yashiro	01c514	8	f+B	-	054d98	2	alt1d6 !air	chr_yashiro_054d98
+21	yashiro	01c4cc	0	throw(b/f+btn)	C	throw:01df8a/idx30	rts		
+21	yashiro	01c4cc	0	throw(b/f+btn)	D	throw:01df90/idx31	rts		
+22	shermie	01c9b2	8	hcf2	AC	0195e4 throw:01e11c/idx7c	1	!alt1d6 !cpu !air !opp_air cmd:player_throw_try_grab	L_0195e4
+22	shermie	01c9b2	8	hcb2	AC	0195e4 throw:01e116/idx7b	1	!alt1d6 !cpu !air !opp_air cmd:player_throw_try_grab	L_0195e4
+22	shermie	01c9b2	8	hcf	BD	05541e	1	!alt1d6 !cpu !air	chr_shermie_hcf_k_05541e
+22	shermie	01c9b2	8	hcf	AC	0195e4 throw:01e10a/idx79	1	!alt1d6 !cpu !air !opp_air cmd:player_throw_try_grab	L_0195e4
+22	shermie	01c9b2	8	dp	BD	05516e	1	!alt1d6 !cpu !air	chr_shermie_dp_k_05516e
+22	shermie	01c9b2	8	qcb	BD	05572c	1	!alt1d6 !cpu !air	chr_shermie_qcb_k_hop
+22	shermie	01c9b2	8	f+B	-	05702a	2	!alt1d6 !cpu !air	chr_shermie_05702a
+22	shermie	01c9b2	8	cpubit6.0	AC	056dae	1	!alt1d6 cpu !air	L_056dae
+22	shermie	01c9b2	8	cpubit6.2	BD	056dae	1	!alt1d6 cpu !air	L_056dae
+22	shermie	01c9b2	8	cpubit5.4	ABCD	056d4c	1	!alt1d6 cpu !air	chr_shermie_056d4c
+22	shermie	01c9b2	8	cpubit5.6	AC	05541e	1	!alt1d6 cpu !air	chr_shermie_hcf_k_05541e
+22	shermie	01c9b2	8	cpubit5.6	BD	05572c	1	!alt1d6 cpu !air	chr_shermie_qcb_k_hop
+22	shermie	01c9b2	8	f+B	-	05702a	2	!alt1d6 cpu !air	chr_shermie_05702a
+22	shermie	01c9b2	8	qcf2	AC	056816	1	alt1d6 !air	chr_oshermie_dm
+22	shermie	01c9b2	8	qcb_hcf	BD	056b8a	1	alt1d6 !air	L_056b8a
+22	shermie	01c9b2	8	hcf	ABCD	056344	1	alt1d6 !air	chr_oshermie_energy_ball
+22	shermie	01c9b2	8	qcb	AC	0565ae	1	alt1d6 !air	chr_oshermie_lightning_palm
+22	shermie	01c9b2	8	qcb	BD	05603c	1	alt1d6 !air	L_05603c
+22	shermie	01c9b2	8	f+B	-	05702a	2	alt1d6 !air	chr_shermie_05702a
+22	shermie	01c9b2	8	qcf	BD	0561cc	1	alt1d6 air	L_0561cc
+22	shermie	01c96a	0	throw(b/f+btn)	C	throw:01df96/idx32	rts		
+22	shermie	01c96a	0	throw(b/f+btn)	D	throw:01df9c/idx33	rts		
+23	chris	01cd46	8	qcb2	BD	058bba	1	!alt1d6 !cpu !air	chr_chris_dm_hop_dive
+23	chris	01cd46	8	qcf2	AC	0589d0	1	!alt1d6 !cpu !air	chr_chris_dm_qcf2_p_0589d0
+23	chris	01cd46	8	hcb	ABCD	0574d2	1	!alt1d6 !cpu !air	chr_chris_hcb_0574d2
+23	chris	01cd46	8	dp	BD	057348	1	!alt1d6 !cpu !air	chr_chris_dp_k_057348
+23	chris	01cd46	8	qcf	AC	0571ec	1	!alt1d6 !cpu !air	chr_chris_0571ec
+23	chris	01cd46	8	f+A	-	059214	2	!alt1d6 !cpu !air	L_059214
+23	chris	01cd46	8	qcf	BD	057802	1	!alt1d6 !cpu air	L_057802
+23	chris	01cd46	8	cpubit6.2	AC	058bba	1	!alt1d6 cpu !air	chr_chris_dm_hop_dive
+23	chris	01cd46	8	cpubit6.4	AC	0589d0	1	!alt1d6 cpu !air	chr_chris_dm_qcf2_p_0589d0
+23	chris	01cd46	8	cpubit6.0	AC	0195e4 throw:01e158/idx86	1	!alt1d6 cpu !air !opp_air cmd:player_throw_try_grab	L_0195e4
+23	chris	01cd46	8	cpubit5.6	AC	057348	1	!alt1d6 cpu !air	chr_chris_dp_k_057348
+23	chris	01cd46	8	cpubit5.4	ABCD	0574d2	1	!alt1d6 cpu !air	chr_chris_hcb_0574d2
+23	chris	01cd46	8	cpubit5.2	AC	0571ec	1	!alt1d6 cpu !air	chr_chris_0571ec
+23	chris	01cd46	8	f+A	-	059214	2	!alt1d6 cpu !air	L_059214
+23	chris	01cd46	8	qcf2	AC	057fca	1	alt1d6 !air	L_057fca
+23	chris	01cd46	8	qcb_hcf	AC	0585f6	1	alt1d6 !air	L_0585f6
+23	chris	01cd46	8	hcf	AC	0195e4 throw:01e0bc/idx6c	1	alt1d6 !air !opp_air cmd:player_throw_try_grab	L_0195e4
+23	chris	01cd46	8	dp	AC	057d04	1	alt1d6 !air	chr_ochris_flame_leap
+23	chris	01cd46	8	qcb	AC	057b44	1	alt1d6 !air	L_057b44
+23	chris	01cd46	8	qcf	AC	057952	1	alt1d6 !air	chr_ochris_flame_pillars
+23	chris	01cd46	8	f+A	-	059214	2	alt1d6 !air	L_059214
+23	chris	01ccfe	0	throw(b/f+btn)	C	throw:01dfa2/idx34	rts		
+23	chris	01ccfe	0	throw(b/f+btn)	D	throw:01dfa8/idx35	rts		
+24	yamazaki	01d136	8	hcb2	AC	0195e4 throw:01e104/idx78	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+24	yamazaki	01d136	8	qcf2	AC	059c8c	1	!air	chr_yamazaki_dm_qcf2_p_059c8c
+24	yamazaki	01d136	8	dp	AC	0599be	1	!air	chr_yamazaki_dp_p_0599be
+24	yamazaki	01d136	8	dp	BD	059af2	1	!air	chr_yamazaki_dp_k_059af2
+24	yamazaki	01d136	8	qcb	ABC	0593a6	1	!air	chr_yamazaki_0593a6
+24	yamazaki	01d136	8	hcf	BD	0595c6	1	!air	chr_yamazaki_hcf_k_0595c6
+24	yamazaki	01d136	8	hcf	AC	0195e4 throw:01e0fe/idx77	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+24	yamazaki	01d136	8	qcf	AC	05976e	1	!air	chr_yamazaki_qcf_p_05976e
+24	yamazaki	01d136	8	f+A	-	05b77c	2	!air	chr_yamazaki_05b77c
+24	yamazaki	01d0ee	0	throw(b/f+btn)	C	throw:01dfae/idx36	rts		
+24	yamazaki	01d0ee	0	throw(b/f+btn)	D	throw:01dfb4/idx37	rts		
+25	mary	01d2f8	8	chg_bf	BD	05c6c8	1	!air	chr_mary_chg_bf_k_05c6c8
+25	mary	01d2f8	8	hcb2	BD	0195e4 throw:01e0f8/idx76	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+25	mary	01d2f8	8	qcf2	BD	05cc1e	1	!air	chr_mary_dm_qcf2_k_05cc1e
+25	mary	01d2f8	8	qcf_hcb	AC	05d622	1	!air	chr_mary_dm_qcf_hcb_p_05d622
+25	mary	01d2f8	8	dp	BD	05c2fc	1	!air	chr_mary_dp_k_05c2fc
+25	mary	01d2f8	8	hcf	AC	0195e4 throw:01e0ec/idx74	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+25	mary	01d2f8	8	qcb	B	05bd4c	1	!air	chr_mary_05bd4c
+25	mary	01d2f8	8	qcb	D	05bee4	1	!air	chr_mary_05bee4
+25	mary	01d2f8	8	qcf	AC	05ba52	1	!air	chr_mary_qcf_p_05ba52
+25	mary	01d2f8	8	qcf	BD	05b91a	1	!air	chr_mary_05b91a
+25	mary	01d2f8	8	f+A	-	05dd32	2	!air	chr_mary_05dd32
+25	mary	01d2f8	8	df+B	-	05de36	2	!air	chr_mary_df_b_attack
+25	mary	01d2b0	0	throw(b/f+btn)	C	throw:01dfba/idx38	rts		
+25	mary	01d2b0	0	throw(b/f+btn)	D	throw:01dfc0/idx39	rts		
+26	billy	01d528	8	qcf2	AC	05e7dc	1	!air	chr_billy_dm_qcf2_p_05e7dc
+26	billy	01d528	8	qcf_hcb	AC	05e970	1	!air	chr_billy_dm_qcf_hcb_p_05e970
+26	billy	01d528	8	hcf	AC	05dfd8	1	!air	chr_billy_hcf_p_05dfd8
+26	billy	01d528	8	dp	AC	05e30a	1	!air	chr_billy_dp_p_05e30a
+26	billy	01d528	8	dp	BD	05e470	1	!air	chr_billy_dp_k_05e470
+26	billy	01d528	8	qcb	BD	05e65a	1	!air	chr_billy_05e65a
+26	billy	01d528	8	mash_AC	ABCD	05e156	1	!air	chr_billy_05e156
+26	billy	01d528	8	f+A	-	05ef70	2	!air	chr_billy_05ef70
+26	billy	01d528	8	f+B	-	05f07a	2	!air	chr_billy_05f07a
+26	billy	01d4e0	0	throw(b/f+btn)	C	throw:01dfc6/idx3a	rts		
+26	billy	01d4e0	0	throw(b/f+btn)	D	throw:01dfcc/idx3b	rts		
+27	iori	01d69e	8	qcb_hcf	AC	060306	1	!air	chr_iori_dm_qcb_hcf_p_060306
+27	iori	01d69e	8	qcf_hcb	AC	05fe30	1	!air	chr_iori_dm_qcf_hcb_p_05fe30
+27	iori	01d69e	8	hcb	BD	05f468	1	!air	chr_iori_hcb_k_05f468
+27	iori	01d69e	8	hcf	AC	0195e4 throw:01e056/idx5b	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+27	iori	01d69e	8	dp	AC	05f26e	1	!air	chr_iori_dp_p_05f26e
+27	iori	01d69e	8	qcb	AC	05f83e	1	!air	L_05f83e
+27	iori	01d69e	8	qcf	AC	05fc50	1	!air	chr_iori_qcf_p_05fc50
+27	iori	01d69e	8	f+A	-	060c36	2	!air	chr_iori_fwd_a_double
+27	iori	01d69e	8	f+B	-	060d3a	2	!air	chr_iori_060d3a
+27	iori	01d69e	8	b+B	-	060dc0	2	air	L_060dc0
+27	iori	01d656	0	throw(b/f+btn)	C	throw:01dfd2/idx3c	rts		
+27	iori	01d656	0	throw(b/f+btn)	D	throw:01dfd8/idx3d	rts		
+28	orochi_iori	01d890	8	qcb_hcf	AC	061fae	1	!air	chr_iori_dm_qcb_hcf_p_061fae
+28	orochi_iori	01d890	8	qcf_hcb	AC	061af0	1	!air	chr_iori_dm_qcf_hcb_p_061af0
+28	orochi_iori	01d890	8	hcb	BD	061158	1	!air	chr_iori_hcb_k_061158
+28	orochi_iori	01d890	8	hcf	AC	0195e4 throw:01e0c2/idx6d	1	!air !opp_air cmd:player_throw_try_grab	L_0195e4
+28	orochi_iori	01d890	8	dp	AC	060f66	1	!air	chr_iori_dp_p_060f66
+28	orochi_iori	01d890	8	qcb	AC	06151e	1	!air	chr_iori_06151e
+28	orochi_iori	01d890	8	qcf	AC	061918	1	!air	chr_iori_061918
+28	orochi_iori	01d890	8	f+A	-	0628d6	2	!air	L_0628d6
+28	orochi_iori	01d890	8	f+B	-	0629d2	2	!air	chr_iori_0629d2
+28	orochi_iori	01d890	8	b+B	-	062a50	2	air	L_062a50
+28	orochi_iori	01d848	0	throw(b/f+btn)	C	throw:01dfde/idx3e	rts		
+28	orochi_iori	01d848	0	throw(b/f+btn)	D	throw:01dfe4/idx3f	rts		
+29	orochi_leona	01daa2	8	chg_du	AC	062bee	1	!air	chr_leona_chg_du_p_062bee
+29	orochi_leona	01daa2	8	chg_du	BD	0630b4	1	!air	chr_leona_chg_du_k_0630b4
+29	orochi_leona	01daa2	8	chg_bf	BD	062cf0	1	!air	chr_leona_chg_bf_k_062cf0
+29	orochi_leona	01daa2	8	chg_bf	AC	06330e	1	!air	chr_leona_chg_bf_p_06330e
+29	orochi_leona	01daa2	8	qcf2	AC	064042	1	!air	chr_oleona_dm_leap_grab
+29	orochi_leona	01daa2	8	qcb_hcf	BD	06365a	1	!air	chr_leona_dm_qcb_hcf_k_06365a
+29	orochi_leona	01daa2	8	qcb	AC	064442	1	!air	chr_oleona_qcb_p
+29	orochi_leona	01daa2	8	qcf_hcb	AC	063a3a	1	air	L_063a3a
+29	orochi_leona	01da7e	4	airthrow(btn)	CD	throw:01dffc/idx43	rts		
+29	orochi_leona	01da3a	0	throw(b/f+btn)	C	throw:01dff0/idx41	rts		
+29	orochi_leona	01da3a	0	throw(b/f+btn)	D	throw:01dff6/idx42	rts		
+30	orochi	01dc34	8	hcb	ABCD	065828	1	!air	chr_orochi_hcb_065828
+30	orochi	01dc34	8	dp	AC	065574	1	!air	chr_orochi_dp_p_065574
+30	orochi	01dc34	8	qcb	AC	0652ba	1	!air	chr_orochi_qcb_p_0652ba
+30	orochi	01dc34	8	qcf	BC	064c4a	1	!air	chr_orochi_064c4a
+30	orochi	01dc34	8	qcf	D	064f16	1	!air	L_064f16
+30	orochi	01dc34	8	qcf	A	06512e	1	!air	chr_orochi_06512e
+30	orochi	01dbec	0	throw(b/f+btn)	C	throw:01e002/idx44	rts		
+30	orochi	01dbec	0	throw(b/f+btn)	D	throw:01e008/idx45	rts		
+31	shingo	01dd48	8	qcf2	AC	0660f4	1	!air	chr_shingo_dm_qcf2_p_0660f4
+31	shingo	01dd48	8	qcb_hcf	AC	06627c	1	!air	chr_shingo_dm_qcb_hcf_p_06627c
+31	shingo	01dd48	8	hcf	BD	065fba	1	!air	chr_shingo_hcf_k_065fba
+31	shingo	01dd48	8	dp	AC	065d8e	1	!air	chr_shingo_dp_p_065d8e
+31	shingo	01dd48	8	qcb	BD	065b3c	1	!air	chr_shingo_hop_kick
+31	shingo	01dd48	8	qcf	AC	065ec6	1	!air	chr_shingo_065ec6
+31	shingo	01dd48	8	f+B	-	06651c	2	!air	chr_shingo_06651c
+31	shingo	01dd00	0	throw(b/f+btn)	C	throw:01e00e/idx46	rts		
+31	shingo	01dd00	0	throw(b/f+btn)	D	throw:01e014/idx47	rts		

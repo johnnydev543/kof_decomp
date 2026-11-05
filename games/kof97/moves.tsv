@@ -1,0 +1,468 @@
+# KOF'97 move list (special moves, desperation moves, throws, command moves) from MAME command.dat
+# (progettosnaps.net/command, pS_Command_273: 'Rebuilt by Fabricio Coroquer, created by Minoplis').
+# Numpad notation as in command.dat: _2_3_6_+_P = qcf+P, ^4_6 = charge back,forward, _^ = in the air,
+# 'close' = next to the opponent, ^! = follow-up of the move above. Columns: character, kind, name, command.
+KYO KUSANAGI	throw	Hatsugane	_4 / _6_+_C
+KYO KUSANAGI	throw	Issetsu Seoi Nage	_4 / _6_+_D
+KYO KUSANAGI	command	Ge Shiki: Goufu You	_6_+_B
+KYO KUSANAGI	command	88 Shiki	_3_+_D
+KYO KUSANAGI	command	Ge Shiki: Naraku Otoshi	_^_2_+_C
+KYO KUSANAGI	special	114 Shiki: Aragami	_2_3_6_+_A
+KYO KUSANAGI	special	^!128 Shiki: Kono Kizu	_2_3_6_+_P
+KYO KUSANAGI	special	^!127 Shiki: Yano Sabi	_P
+KYO KUSANAGI	special	^!125 Shiki: Nanase	_K
+KYO KUSANAGI	special	^!127 Shiki: Yano Sabi	_6_3_2_1_4_+_P
+KYO KUSANAGI	special	^!Ge Shiki: Migari Ugashi	_P
+KYO KUSANAGI	special	^!125 Shiki: Nanase	_K
+KYO KUSANAGI	special	115 Shiki: Dokugami	_2_3_6_+_C
+KYO KUSANAGI	special	^!401 Shiki: Tsumi Yomi	_6_3_2_1_4_+_P
+KYO KUSANAGI	special	^!402 Shiki: Batsu Yomi	_6_+_P
+KYO KUSANAGI	special	100 Shiki: Oniyaki	_6_2_3_+_P
+KYO KUSANAGI	special	212 Shiki: Kototsuki You	_6_3_2_1_4_+_K
+KYO KUSANAGI	special	R.E.D. KicK	_4_2_1_+_K
+KYO KUSANAGI	special	75 Shiki Kai	_2_3_6_+_K_K
+KYO KUSANAGI	special	910 Shiki: Nue Tsumi	_2_1_4_+_P (reverse high/mid/low)
+KYO KUSANAGI	dm	Ura 108 Shiki: Orochinagi	_2_1_4_1_2_3_6_+_P (_O)
+KYO KUSANAGI	dm	Saishuu Kessen Ougi "Mu Shiki"	_2_3_6_2_3_6_+_P
+KYO KUSANAGI	dm	^!Chouhatsu	^*_P
+BENIMARU NIKAIDO	throw	Catch and Shoot	_4 / _6_+_C
+BENIMARU NIKAIDO	throw	Front Suplex	_4 / _6_+_D
+BENIMARU NIKAIDO	throw	Spinning Knee Drop	_^_4 / _6_+_C / _D
+BENIMARU NIKAIDO	command	Jackknife Kick	_6_+_B
+BENIMARU NIKAIDO	command	Flying Drill	_^_2_+_D
+BENIMARU NIKAIDO	special	Raijin Ken	_2_3_6_+_P
+BENIMARU NIKAIDO	special	Kuuchuu Raijin Ken	_^_2_3_6_+_P
+BENIMARU NIKAIDO	special	Shinkuu Katategoma	_2_1_4_+_P
+BENIMARU NIKAIDO	special	Iai Geri	_2_3_6_+_K
+BENIMARU NIKAIDO	special	Super Inazuma Kick	_6_2_3_+_K
+BENIMARU NIKAIDO	special	Handou Sandan Geri	_6_3_2_1_4_+_K
+BENIMARU NIKAIDO	special	Benimaru Collider	close _6_3_2_1_4_6_+_P
+BENIMARU NIKAIDO	dm	Raikou Ken	_2_3_6_2_3_6_+_P
+BENIMARU NIKAIDO	dm	Elec-Trigger	close _6_3_2_1_4_6_3_2_1_4_+_P
+GORO DAIMON	throw	Juuji Shime	_4 / _6_+_C
+GORO DAIMON	throw	Tsukami Tataki Tsuke	within throw range _4 / _6_+_C
+GORO DAIMON	throw	Okuri Ashi Barai	_4 / _6_+_D
+GORO DAIMON	command	Tama Tsubushi	_6_+_A
+GORO DAIMON	command	Zujou Barai	_3_+_C
+GORO DAIMON	special	Jiraishin	_6_2_3_+_A
+GORO DAIMON	special	Fake Jiraishin	_6_2_3_+_C
+GORO DAIMON	special	Kumo Tsukami Nage	_4_1_2_3_6_+_A
+GORO DAIMON	special	Kirikabu Gaeshi	_4_1_2_3_6_+_C
+GORO DAIMON	special	Chou Oosotogari	close _6_2_3_+_K
+GORO DAIMON	special	Tenchi Gaeshi	close _6_3_2_1_4_6_+_P
+GORO DAIMON	special	Ura Nage	_6_3_2_1_4_6_+_K
+GORO DAIMON	special	Chou Ukemi	_2_1_4_+_K
+GORO DAIMON	special	Nekko Gaeshi	_2_3_6_+_K (reverse high/mid)
+GORO DAIMON	dm	Jigoku Gokuraku Otoshi	close _6_3_2_1_4_6_3_2_1_4_+_P
+GORO DAIMON	dm	Arashi no Yama: Nekko Meki	close _4_1_2_3_6_4_1_2_3_6_+_K
+GORO DAIMON	dm	^!Arashi no Yama: Zoku Kirikabu Gaeshi	_4_1_2_3_6_+_K
+GORO DAIMON	dm	^!Arashi no Yama: Bukko Meki Ura Nage	_6_2_3_+_K
+TERRY BOGARD	throw	Grasping Upper	_4 / _6_+_C
+TERRY BOGARD	throw	Buster Throw	_4 / _6_+_D
+TERRY BOGARD	command	Back Knuckle	_6_+_A
+TERRY BOGARD	command	Rising Upper	_3_+_C
+TERRY BOGARD	special	Power Wave	_2_3_6_+_P
+TERRY BOGARD	special	Rising Tackle	_6_2_3_+_P
+TERRY BOGARD	special	Power Dunk	_6_2_3_+_K
+TERRY BOGARD	special	Burn Knuckle	_2_1_4_+_P
+TERRY BOGARD	special	Crack Shoot	_2_1_4_+_K
+TERRY BOGARD	special	Power Charge	_4_1_2_3_6_+_K
+TERRY BOGARD	dm	Power Geyser	_2_1_4_1_2_3_6_+_P
+TERRY BOGARD	dm	High Angle Geyser	_2_3_6_2_3_6_+_K
+ANDY BOGARD	throw	Gourin Kai	_4 / _6_+_C
+ANDY BOGARD	throw	Kakaekomi Nage	_4 / _6_+_D
+ANDY BOGARD	command	Uwa Agito	_6_+_B
+ANDY BOGARD	special	Hishou Ken	_2_1_4_+_P
+ANDY BOGARD	special	Shouryuu Dan	_6_2_3_+_P
+ANDY BOGARD	special	Kuuha Dan	_4_1_2_3_6_+_K
+ANDY BOGARD	special	Zan'ei Ken	_1_6_+_P
+ANDY BOGARD	special	^!Gadankou	_2_3_6_+_P
+ANDY BOGARD	special	Gekiheki Haisui Shou	close _4_1_2_3_6_+_P
+ANDY BOGARD	special	Gen'ei Shiranui	_^_2_3_6_+_K
+ANDY BOGARD	special	^!Shimo Agito	_P
+ANDY BOGARD	special	^!Uwa Agito	_K
+ANDY BOGARD	dm	Chou Reppa Dan	_2_1_4_1_2_3_6_+_K
+ANDY BOGARD	dm	Hishou Ryuusei Ken	_2_3_6_2_3_6_+_P
+JOE HIGASHI	throw	Hiza Jigoku	_4 / _6_+_C
+JOE HIGASHI	throw	Leg Throw	_4 / _6_+_D
+JOE HIGASHI	command	Low Kick	_6_+_B
+JOE HIGASHI	command	Sliding	_3_+_B
+JOE HIGASHI	special	Bakuretsu Ken	^*_P
+JOE HIGASHI	special	^!Bakuretsu Hook	_2_3_6_+_A
+JOE HIGASHI	special	^!Bakuretsu Kick	_2_3_6_+_C
+JOE HIGASHI	special	Hurricane Upper	_4_1_2_3_6_+_A
+JOE HIGASHI	special	Bakuretsu Hurricane	_4_1_2_3_6_+_C
+JOE HIGASHI	special	Tiger Kick	_6_2_3_+_K
+JOE HIGASHI	special	Slash Kick	_4_1_2_3_6_+_K
+JOE HIGASHI	special	Ougon no Kakato	_2_1_4_+_K
+JOE HIGASHI	dm	Screw Upper	_2_3_6_2_3_6_+_P
+JOE HIGASHI	dm	Bakuretsu Hurricane Tiger Kakato	_2_3_6_3_2_1_4_+_P
+RYO SAKAZAKI	throw	Tani Otoshi	_4 / _6_+_C
+RYO SAKAZAKI	throw	Tomoe Nage	_4 / _6_+_D
+RYO SAKAZAKI	command	Hyouchuu Wari	_6_+_A
+RYO SAKAZAKI	special	Ko'ou Ken	_2_3_6_+_P
+RYO SAKAZAKI	special	Kohou	_6_2_3_+_P
+RYO SAKAZAKI	special	Hien Shippuu Kyaku	_6_3_2_1_4_+_K
+RYO SAKAZAKI	special	Mouko Raijin Gou	_2_1_4_+_P
+RYO SAKAZAKI	special	Mouko Raijin Setsu	_2_3_6_+_K
+RYO SAKAZAKI	special	Kyokugen-ryuu Renbu Ken	close _4_1_2_3_6_+_P
+RYO SAKAZAKI	dm	Ryuuko Ranbu	_2_3_6_3_2_1_4_+_P
+RYO SAKAZAKI	dm	Haoh Shoukou Ken	_6_4_1_2_3_6_+_P
+RYO SAKAZAKI	dm	Tenchi Haoh Ken	_2_3_6_2_3_6_+_P
+ROBERT GARCIA	throw	Ryuuchou Kyaku	_4 / _6_+_C
+ROBERT GARCIA	throw	Kubikiri Nage	_4 / _6_+_D
+ROBERT GARCIA	command	Ryuu Hanshuu	_6_+_B
+ROBERT GARCIA	special	Ryuugeki Ken	_2_3_6_+_P
+ROBERT GARCIA	special	Ryuuga	_6_2_3_+_P
+ROBERT GARCIA	special	Ryuu Zanshou	_6_2_3_+_K
+ROBERT GARCIA	special	Hien Senpuu Kyaku	_6_3_2_1_4_+_K
+ROBERT GARCIA	special	Hien Ryuujin Kyaku	_^_2_1_4_+_K
+ROBERT GARCIA	special	Kyokugen-ryuu Renbu Kyaku	close _4_1_2_3_6_+_K
+ROBERT GARCIA	dm	Ryuuko Ranbu	_2_3_6_3_2_1_4_+_P
+ROBERT GARCIA	dm	Haoh Shoukou Ken	_6_4_1_2_3_6_+_P
+ROBERT GARCIA	dm	Mu'ei Shippuu Juudan Kyaku	_2_3_6_2_3_6_+_K
+YURI SAKAZAKI	throw	Oni Harite	_4 / _6_+_C
+YURI SAKAZAKI	throw	Silent Nage	_4 / _6_+_D
+YURI SAKAZAKI	throw	Tsubame Otoshi	_^_4 / _6_+_C / _D
+YURI SAKAZAKI	command	En Yoku	_6_+_B
+YURI SAKAZAKI	special	Ko'ou Ken	_2_3_6_+_P
+YURI SAKAZAKI	special	Rai'ou Ken	_2_3_6_+_K
+YURI SAKAZAKI	special	Yuri Chou Upper	_6_2_3_+_P
+YURI SAKAZAKI	special	^!Double Yuri Chou Upper (with _C)	_6_2_3_+_P
+YURI SAKAZAKI	special	Yuri Chou Knuckle	_2_1_4_+_P
+YURI SAKAZAKI	special	Yuri Chou Mawashi Geri	_2_1_4_+_K
+YURI SAKAZAKI	special	Hyakuretsu Binta: Hissatsu Nage	close _6_3_2_1_4_+_A
+YURI SAKAZAKI	special	Hyakuretsu Binta: Idou Nage	_6_3_2_1_4_+_C
+YURI SAKAZAKI	dm	Hien Hou'ou Kyaku	_2_3_6_3_2_1_4_+_K
+YURI SAKAZAKI	dm	Haoh Shoukou Ken	_6_4_1_2_3_6_+_P
+YURI SAKAZAKI	dm	Hien Rekkou	_2_3_6_2_3_6_+_P
+LEONA HEIDERN	throw	Leona Crush	_4 / _6_+_C
+LEONA HEIDERN	throw	Order Buckler	_4 / _6_+_D
+LEONA HEIDERN	throw	Heidern Inferno	_^_4 / _6_+_C / _D
+LEONA HEIDERN	special	Baltic Launcher	^4_6_+_P
+LEONA HEIDERN	special	Moon Slasher	^2_8_+_P
+LEONA HEIDERN	special	Ground Saber	^4_6_+_K
+LEONA HEIDERN	special	^!Gliding Buster (with _D)	_6_+_D
+LEONA HEIDERN	special	X-Caliber	^2_8_+_K
+LEONA HEIDERN	special	I-Slasher	_2_1_4_+_P
+LEONA HEIDERN	dm	V-Slasher	_^_2_3_6_3_2_1_4_+_P
+LEONA HEIDERN	dm	Rebel Spark	_2_1_4_1_2_3_6_+_K
+LEONA HEIDERN	dm	Gravity Storm	_2_3_6_2_3_6_+_P
+RALF JONES	throw	Dynamite Headbutt	_4 / _6_+_C
+RALF JONES	throw	Northern Light Bomb	_4 / _6_+_D
+RALF JONES	special	Vulcan Punch	^*_P
+RALF JONES	special	^!Move	_6
+RALF JONES	special	Gatling Attack	^4_6_+_P
+RALF JONES	special	Kyuukouka Bakudan Punch: Chijou	^2_8_+_P
+RALF JONES	special	Kyuukouka Bakudan Punch: Kuuchuu	_^_2_3_6_+_P
+RALF JONES	special	Ralf Kick	^4_6_+_K
+RALF JONES	special	Super Argentine Backbreaker	close _4_1_2_3_6_+_K
+RALF JONES	dm	Baribari Vulcan Punch	_2_3_6_3_2_1_4_+_P
+RALF JONES	dm	Umanori Vulcan Punch	_2_1_4_1_2_3_6_+_K
+RALF JONES	dm	Galactica Phantom	_2_3_6_2_3_6_+_P
+CLARK STILL	throw	Nageppanashi German	_4 / _6_+_C
+CLARK STILL	throw	Fisherman Buster	_4 / _6_+_D
+CLARK STILL	throw	Death Lake Driver	_^_4 / _6_+_C / _D
+CLARK STILL	command	Stomping	_6_+_B
+CLARK STILL	special	Vulcan Punch	^*_P
+CLARK STILL	special	^!Move	_6
+CLARK STILL	special	Napalm Stretch	_6_2_3_+_P
+CLARK STILL	special	^!Flashing Elbow	_2_3_6_+_P
+CLARK STILL	special	Rolling Death Cradle	_4_1_2_3_6_+_P
+CLARK STILL	special	^!Flashing Elbow	_2_3_6_+_P
+CLARK STILL	special	Frankensteiner	close _6_2_3_+_K
+CLARK STILL	special	^!Flashing Elbow	_2_3_6_+_P
+CLARK STILL	special	Super Argentine Backbreaker	close _4_1_2_3_6_+_K
+CLARK STILL	special	^!Flashing Elbow	_2_3_6_+_P
+CLARK STILL	dm	Ultra Argentine Backbreaker	close _6_3_2_1_4_6_3_2_1_4_+_P
+CLARK STILL	dm	Running Three	_4_1_2_3_6_4_1_2_3_6_+_K
+ATHENA ASAMIYA	throw	Bit Throw	_4 / _6_+_C
+ATHENA ASAMIYA	throw	Psychic Throw	_4 / _6_+_D
+ATHENA ASAMIYA	throw	Psychic Shoot	_^_4 / _6_+_C / _D
+ATHENA ASAMIYA	command	Renkan Tai	_6_+_B
+ATHENA ASAMIYA	command	Phoenix Bomb	_^_2_+_B
+ATHENA ASAMIYA	command	Sankaku Tobi	jump against the wall _9
+ATHENA ASAMIYA	special	Psycho Ball Attack	_2_1_4_+_P
+ATHENA ASAMIYA	special	Psycho Sword	(_^)_6_2_3_+_P
+ATHENA ASAMIYA	special	Phoenix Arrow	_^_2_1_4_+_P
+ATHENA ASAMIYA	special	Psycho Reflector	_6_3_2_1_4_+_K (reflect projectile)
+ATHENA ASAMIYA	special	Psychic Teleport	_2_3_6_+_K
+ATHENA ASAMIYA	special	Super Psychic Throw	close _4_1_2_3_6_+_C
+ATHENA ASAMIYA	dm	Shining Crystal Bit	(_^)_4_6_3_2_1_4_+_P
+ATHENA ASAMIYA	dm	^!Crystal Shoot	_2_1_4_+_P (_O)
+ATHENA ASAMIYA	dm	^!Cancel	_A_+_B_+_C_+_D
+ATHENA ASAMIYA	dm	Phoenix Fang Arrow	_^_2_3_6_2_3_6_+_P
+SIE KENSOU	throw	Hakki	_4 / _6_+_C
+SIE KENSOU	throw	Tomoe Nage	_4 / _6_+_D
+SIE KENSOU	command	Kobokushu	_6_+_A
+SIE KENSOU	command	Kousentai	_6_+_B
+SIE KENSOU	special	Choukyuu Dan	_2_1_4_+_P
+SIE KENSOU	special	Ryuu Renga: Chiryuu	_4_1_2_3_6_+_A
+SIE KENSOU	special	Ryuu Renga: Tenryuu	_4_1_2_3_6_+_C
+SIE KENSOU	special	Ryuu Gakusai	_4_2_1_+_K
+SIE KENSOU	special	Ryuu Renda	close _6_2_3_+_P (^*)
+SIE KENSOU	special	Ryuu Sougeki	_^_2_1_4_+_P
+SIE KENSOU	dm	Shinryuu Seiou Rekkyaku	_2_3_6_3_2_1_4_+_B
+SIE KENSOU	dm	Shinryuu Tenbu Kyaku	_2_3_6_3_2_1_4_+_D
+SIE KENSOU	dm	Senki Hakkei	close _2_3_6_2_3_6_+_P
+SIE KENSOU	dm	Niku Man o Kuu	_2_1_4_2_1_4_+_P
+CHIN GENTSAI	throw	Gou Inshu	_4 / _6_+_C
+CHIN GENTSAI	throw	Gyaku Ashi Nage	_4 / _6_+_D
+CHIN GENTSAI	command	Suiho Hyoutan Shuu	_6_+_A
+CHIN GENTSAI	special	Hyoutan Geki	_2_1_4_+_P
+CHIN GENTSAI	special	Ryuurin Hourai	_6_2_3_+_P
+CHIN GENTSAI	special	Kaiten-teki Kuutotsu Ken	_4_1_2_3_6_+_K
+CHIN GENTSAI	special	Choushuu Rikugyo	_2_3^6_+_P
+CHIN GENTSAI	special	Suikan Kanou	_2_3_6_+_P
+CHIN GENTSAI	special	^!Choushuu Rikugyo	_6_+_P
+CHIN GENTSAI	special	^!Kaiten-teki Kuutotsu Ken	_6_+_K
+CHIN GENTSAI	special	^!Cancel	_A_+_B_+_C_+_D
+CHIN GENTSAI	special	Bougetsu Sui	_2_1_4_+_K
+CHIN GENTSAI	special	^!Move	_4 / _6
+CHIN GENTSAI	special	^!Rouja Hanhou	_8_+_B
+CHIN GENTSAI	special	^!Rigyo Hanhou	_8_+_D
+CHIN GENTSAI	special	^!Kaiten-teki Kuutotsu Ken	_6_+_K
+CHIN GENTSAI	special	^!Cancel	_A_+_B_+_C_+_D
+CHIN GENTSAI	dm	Gouran Enpou	_2_3_6_2_3_6_+_P
+CHIN GENTSAI	dm	Gou'en Shourai	_2_3_6_3_2_1_4_+_P
+CHIZURU KAGURA	throw	Reigetsu	_4 / _6_+_C
+CHIZURU KAGURA	throw	Kaiten	_4 / _6_+_D
+CHIZURU KAGURA	special	100 Katsu: Tenjin no Kotowari	_6_2_3_+_P
+CHIZURU KAGURA	special	212 Katsu: Shinsoku no Norito	_6_3_2_1_4_+_P / _K
+CHIZURU KAGURA	special	^!212 Katsu: Shinsoku no Norito: Tenzui	_2_1_4_+_P / _K
+CHIZURU KAGURA	special	202 Katsu Otsu Shiki: Choumon no Isshin	_2_3_6_+_P / _K
+CHIZURU KAGURA	special	108 Katsu: Tamayura no Shitsune	_4_1_2_3_6_+_P (reflect projectile)
+CHIZURU KAGURA	dm	Ichimen 85 Katsu: Reigi no Ishizue	_2_1_4_1_2_3_6_+_P
+CHIZURU KAGURA	dm	Ichimen 1 Katsu: Sanrai no Fujin	_2_3_6_2_3_6_+_K
+MAI SHIRANUI	throw	Shiranui Gourin	_4 / _6_+_C
+MAI SHIRANUI	throw	Fuusha Kuzushi	_4 / _6_+_D
+MAI SHIRANUI	throw	Yume Zakura	_^_4 / _6_+_C / _D
+MAI SHIRANUI	command	Koukaku no Mai	_3_+_B
+MAI SHIRANUI	command	Sankaku Tobi	jump against the wall _9
+MAI SHIRANUI	special	Kacho Sen	_2_3_6_+_P
+MAI SHIRANUI	special	Ryuu Enbu	_2_1_4_+_P
+MAI SHIRANUI	special	Hissatsu Shinobi Bachi	_4_1_2_3_6_+_K
+MAI SHIRANUI	special	Hakuro no Mai	_6_2_3_+_P
+MAI SHIRANUI	special	Hishou Ryuu'en Jin	_6_2_3_+_K
+MAI SHIRANUI	special	Musasabi no Mai: Chijou	^2_8_+_O_P
+MAI SHIRANUI	special	Musasabi no Mai: Kuuchuu	_^_2_1_4_+_P
+MAI SHIRANUI	dm	Chou Hissatsu Shinobi Bachi	_2_1_4_1_2_3_6_+_K
+MAI SHIRANUI	dm	Hou'ou no Mai	_2_1_4_2_1_4_+_P
+MAI SHIRANUI	dm	Mizudori no Mai	_2_3_6_2_3_6_+_P
+KING	throw	Hold Rush	_4 / _6_+_C
+KING	throw	Hook Buster	_4 / _6_+_D
+KING	command	Sliding	_3_+_D
+KING	special	Venom Strike	_2_3_6_+_K
+KING	special	Double Strike	_2_3_6_2_3_6_+_K
+KING	special	Trap Shot	_6_2_3_+_K
+KING	special	Surprise Rose	_6_2_3_+_P
+KING	special	Tornado Kick	_6_3_2_1_4_+_K
+KING	special	Mirage Kick	_4_1_2_3_6_+_K
+KING	dm	Illusion Dance	_2_3_6_3_2_1_4_+_K
+KING	dm	Silent Flash	_2_1_4_2_1_4_+_K
+KIM KAPHWAN	throw	Kubikime Otoshi	_4 / _6_+_C
+KIM KAPHWAN	throw	Sakkyaku Nage	_4 / _6_+_D
+KIM KAPHWAN	command	Dora Yup Chagi	_6_+_A
+KIM KAPHWAN	command	Neri Chagi	_6_+_B
+KIM KAPHWAN	special	Hangetsu Zan	_2_1_4_+_K
+KIM KAPHWAN	special	Hien Zan	^2_8_+_K
+KIM KAPHWAN	special	^!Tenshou Zan (with _D)	_2_+_D
+KIM KAPHWAN	special	Kuu Sajin	^2_8_+_P
+KIM KAPHWAN	special	Ryuusei Raku	^4_6_+_K
+KIM KAPHWAN	special	Hishou Kyaku	_^_2_3_6_+_K
+KIM KAPHWAN	dm	Hou'ou Kyaku	(_^)_2_1_4_1_2_3_6_+_K
+KIM KAPHWAN	dm	Hou'ou Tenbu Kyaku	_^_2_3_6_3_2_1_4_+_K
+CHANG KOEHAN	throw	Hagan Geki	_4 / _6_+_C
+CHANG KOEHAN	throw	Kusari Jime	_4 / _6_+_D
+CHANG KOEHAN	command	Hiki Nige	_3_+_A
+CHANG KOEHAN	special	Tekkyuu Dai Kaiten	^*_P
+CHANG KOEHAN	special	^!Move	_4 / _6
+CHANG KOEHAN	special	^!Cancel	_A_+_B_+_C_+_D
+CHANG KOEHAN	special	Tekkyuu Funsai Geki	^4_6_+_P
+CHANG KOEHAN	special	Tekkyuu Hien Zan	^2_8_+_K
+CHANG KOEHAN	special	Dai Hakai Nage	close _6_3_2_1_4_6_+_C
+CHANG KOEHAN	dm	Tekkyuu Dai Bousou	_2_3_6_3_2_1_4_+_P
+CHANG KOEHAN	dm	Tekkyuu Dai Assatsu	_2_3_6_2_3_6_+_P
+CHOI BOUNGE	throw	Zujou Sashi	_4 / _6_+_C
+CHOI BOUNGE	throw	Geketsu Tsuki	_4 / _6_+_D
+CHOI BOUNGE	command	Nidan Zan	_6_+_A
+CHOI BOUNGE	command	Toorima Geri	_6_+_B
+CHOI BOUNGE	command	Sankaku Tobi	jump against the wall _9
+CHOI BOUNGE	special	Tatsumaki Shippuu Zan	^2_8_+_P
+CHOI BOUNGE	special	Senpuu Hien Sashi	^4_6_+_K
+CHOI BOUNGE	special	^!Houkou Tenkan	_?_+_P / _K (x3)
+CHOI BOUNGE	special	Hishou Kuuretsu Zan	^2_8_+_O_K
+CHOI BOUNGE	special	^!Houkou Tenkan	_?_+_P / _K (x3)
+CHOI BOUNGE	special	Shissou Hishou Zan	^4_6_+_P
+CHOI BOUNGE	special	Hishou Kyaku	_^_2_3_6_+_K
+CHOI BOUNGE	dm	Shin! Chouzetsu Tatsumaki Shinkuu Zan	_6_3_2_1_4_6_3_2_1_4_+_P
+CHOI BOUNGE	dm	^!Move	_4 / _6
+CHOI BOUNGE	dm	Hou'ou Kyaku	_2_3_6_3_2_1_4_+_K
+YASHIRO NANAKASE	throw	Liver Blow	_4 / _6_+_C
+YASHIRO NANAKASE	throw	Hatchet Throw	_4 / _6_+_D
+YASHIRO NANAKASE	command	Step Side Kick	_6_+_B
+YASHIRO NANAKASE	special	Jet Counter	_4_1_2_3_6_+_P
+YASHIRO NANAKASE	special	Duel Upper	_6_2_3_+_P
+YASHIRO NANAKASE	special	Sledgehammer	_2_1_4_+_P
+YASHIRO NANAKASE	special	Missile Might Bash	_6_3_2_1_4_+_P
+YASHIRO NANAKASE	dm	Million Bash Stream	_2_1_4_1_2_3_6_+_P
+YASHIRO NANAKASE	dm	Final Impact	_2_3_6_2_3_6_+_P (_O)
+SHERMIE	throw	Shermie Flash: Original	_4 / _6_+_C
+SHERMIE	throw	Front Flash	_4 / _6_+_D
+SHERMIE	command	Shermie Stand	_6_+_B
+SHERMIE	special	Shermie Whip	_6_2_3_+_K
+SHERMIE	special	Axle Spin Kick	_2_1_4_+_K
+SHERMIE	special	Shermie Shoot	_4_1_2_3_6_+_K
+SHERMIE	special	Shermie Spiral	close _4_1_2_3_6_+_P
+SHERMIE	dm	Shermie Flash	close _6_3_2_1_4_6_3_2_1_4_+_P
+SHERMIE	dm	Shermie Carnival	close _4_1_2_3_6_4_1_2_3_6_+_P
+CHRIS	throw	Step Turn	_4 / _6_+_C
+CHRIS	throw	Aerial Drop	_4 / _6_+_D
+CHRIS	command	Spinning Array	_6_+_A
+CHRIS	special	Slide Touch	_2_3_6_+_P
+CHRIS	special	Hunting Air	_6_2_3_+_K
+CHRIS	special	Shooting Dancer: Thrust	_6_3_2_1_4_+_P
+CHRIS	special	Shooting Dancer: Step	_6_3_2_1_4_+_K
+CHRIS	special	Glider Stomp	_^_2_3_6_+_K
+CHRIS	dm	Chain Slide Touch	_2_3_6_2_3_6_+_P
+CHRIS	dm	Twister Drive	_2_1_4_2_1_4_+_K
+RYUJI YAMAZAKI	throw	Shime Age	_4 / _6_+_C
+RYUJI YAMAZAKI	throw	Bun Nage	_4 / _6_+_D
+RYUJI YAMAZAKI	command	Bussashi	_6_+_A
+RYUJI YAMAZAKI	special	Hebi Tsukai: Joudan	_2_1_4_+_A (_O)
+RYUJI YAMAZAKI	special	^!Hebi Damashi (if held)	_D
+RYUJI YAMAZAKI	special	Hebi Tsukai: Chuudan	_2_1_4_+_B (_O)
+RYUJI YAMAZAKI	special	^!Hebi Damashi (if held)	_D
+RYUJI YAMAZAKI	special	Hebi Tsukai: Gedan	_2_1_4_+_C (_O)
+RYUJI YAMAZAKI	special	^!Hebi Damashi (if held)	_D
+RYUJI YAMAZAKI	special	Sabaki no Aikuchi	_6_2_3_+_P
+RYUJI YAMAZAKI	special	Suna Kake	_6_2_3_+_K
+RYUJI YAMAZAKI	special	Bakudan Pachiki	close _4_1_2_3_6_+_P
+RYUJI YAMAZAKI	special	Bai Gaeshi: Kyuushuu	_2_3_6_+_A (absorb projectile)
+RYUJI YAMAZAKI	special	Bai Gaeshi: Dan Hassha	_2_3_6_+_C (reflect projectile)
+RYUJI YAMAZAKI	special	Sadomazo	_4_1_2_3_6_+_K (reverse jump/high/mid/Specials)
+RYUJI YAMAZAKI	dm	Guillotine	_2_3_6_2_3_6_+_P
+RYUJI YAMAZAKI	dm	Drill	close _6_3_2_1_4_6_3_2_1_4_+_P (^*)
+BLUE MARY	throw	Victor Nage	_4 / _6_+_C
+BLUE MARY	throw	Head Throw	_4 / _6_+_D
+BLUE MARY	command	Hammer Arch	_6_+_A
+BLUE MARY	command	Climbing Arrow	_3_+_B
+BLUE MARY	special	M. Spider	_2_3_6_+_P
+BLUE MARY	special	Spin Fall	_2_3_6_+_K
+BLUE MARY	special	Vertical Arrow	_6_2_3_+_K
+BLUE MARY	special	^!M. Snatcher	_6_2_3_+_K
+BLUE MARY	special	Straight Slicer	^4_6_+_K
+BLUE MARY	special	^!Crab Clutch	_2_3_6_+_K
+BLUE MARY	special	Backdrop Real	close _4_1_2_3_6_+_P
+BLUE MARY	special	M. Reverse Facelock	_2_1_4_+_B (reverse jump/Specials)
+BLUE MARY	special	M. Head Buster	_2_1_4_+_D (reverse high/mid)
+BLUE MARY	dm	M. Typhoon	close _6_3_2_1_4_6_3_2_1_4_+_K
+BLUE MARY	dm	M. Splash Rose	_2_3_6_3_2_1_4_+_P
+BLUE MARY	dm	M. Dynamite Swing	_2_3_6_2_3_6_+_K
+BILLY KANE	throw	Jigoku Otoshi	_4 / _6_+_C
+BILLY KANE	throw	Ippon Zuri Nage	_4 / _6_+_D
+BILLY KANE	command	Dai Kaiten Geri	_6_+_A
+BILLY KANE	command	Boutaka Tobigeri	_6_+_B
+BILLY KANE	special	Senpuu Kon	^*_A
+BILLY KANE	special	Shuuten Renpa Kon	^*_C
+BILLY KANE	special	Sansetsu Kon: Chuudan Uchi	_4_1_2_3_6_+_P
+BILLY KANE	special	^!Kaen Sansetsu Kon: Chuudan Tsuki	_2_3_6_+_P
+BILLY KANE	special	Sen'en Sakkon	_6_2_3_+_P
+BILLY KANE	special	Kyoushuu Hishou Kon	_6_2_3_+_K
+BILLY KANE	special	^!Move	_4 / _6
+BILLY KANE	special	Karyuu Tsuigeki Kon	_2_1_4_+_B (reverse jump/Specials)
+BILLY KANE	special	Suiryuu Tsuigeki Kon	_2_1_4_+_D (reverse high/mid)
+BILLY KANE	dm	Chou Kaen Senpuu Kon	_2_3_6_3_2_1_4_+_P
+BILLY KANE	dm	Dai Senpuu	_2_3_6_2_3_6_+_P
+IORI YAGAMI	throw	Sakahagi	_4 / _6_+_C
+IORI YAGAMI	throw	Saka Sakahagi	_4 / _6_+_D
+IORI YAGAMI	command	Ge Shiki: Yumekibi	_6_+_A_A
+IORI YAGAMI	command	Ge Shiki: Goufu In "Shinigame"	_6_+_B
+IORI YAGAMI	command	Ge Shiki: Yuri Ori	_^_4_+_B
+IORI YAGAMI	special	108 Shiki: Yami Barai	_2_3_6_+_P
+IORI YAGAMI	special	100 Shiki: Oniyaki	_6_2_3_+_P
+IORI YAGAMI	special	127 Shiki: Aoi Hana	_2_1_4_+_P (x3)
+IORI YAGAMI	special	212 Shiki: Kototsuki In	_6_3_2_1_4_+_K
+IORI YAGAMI	special	Kuzukaze	close _4_1_2_3_6_+_P
+IORI YAGAMI	dm	Kin 1211 Shiki: Ya Otome	_2_3_6_3_2_1_4_+_P
+IORI YAGAMI	dm	Ura 108 Shiki: Ya Sakazuki	_2_1_4_1_2_3_6_+_P (_O_P_+_K)
+SHINGO YABUKI	throw	Hatsugane	_4 / _6_+_C
+SHINGO YABUKI	throw	Issetsu Seoi Nage Fukanzen	_4 / _6_+_D
+SHINGO YABUKI	command	Ge Shiki: Goufu "Kakkodake"	_6_+_B
+SHINGO YABUKI	special	114 Shiki: Aragami Mikansei	_2_3_6_+_A
+SHINGO YABUKI	special	115 Shiki: Dokugami Mikansei	_2_3_6_+_C
+SHINGO YABUKI	special	100 Shiki: Oniyaki Mikansei	_6_2_3_+_P
+SHINGO YABUKI	special	101 Shiki: Oboro Guruma Mikansei	_2_1_4_+_K
+SHINGO YABUKI	special	Shingo Kick	_4_1_2_3_6_+_K
+SHINGO YABUKI	dm	Ge Shiki: Kake Hourin	_2_3_6_2_3_6_+_P
+SHINGO YABUKI	dm	^!Idol Teishi	_P
+SHINGO YABUKI	dm	Burning Shingo	_2_1_4_1_2_3_6_+_P
+'94 KYO KUSANAGI	throw	Hatsugane	_4 / _6_+_C
+'94 KYO KUSANAGI	throw	Issetsu Seoi Nage	_4 / _6_+_D
+'94 KYO KUSANAGI	command	Ge Shiki: Goufu You	_6_+_B
+'94 KYO KUSANAGI	command	88 Shiki	_3_+_D
+'94 KYO KUSANAGI	command	Ge Shiki: Naraku Otoshi	_^_2_+_C
+'94 KYO KUSANAGI	special	108 Shiki: Yami Barai	_2_3_6_+_P
+'94 KYO KUSANAGI	special	100 Shiki: Oniyaki	_6_2_3_+_P
+'94 KYO KUSANAGI	special	101 Shiki: Oboro Guruma	_4_2_1_+_K
+'94 KYO KUSANAGI	dm	Ura 108 Shiki: Orochinagi	_2_1_4_1_2_3_6_+_P (_O)
+OROCHI IORI	throw	Sakahagi	_4 / _6_+_C
+OROCHI IORI	throw	Saka Sakahagi	_4 / _6_+_D
+OROCHI IORI	command	Ge Shiki: Yumekibi	_6_+_A_A
+OROCHI IORI	command	Ge Shiki: Goufu In "Shinigame"	_6_+_B
+OROCHI IORI	command	Ge Shiki: Yuri Ori	_^_4_+_B
+OROCHI IORI	special	108 Shiki: Yami Barai	_2_3_6_+_P
+OROCHI IORI	special	100 Shiki: Oniyaki	_6_2_3_+_P
+OROCHI IORI	special	127 Shiki: Aoi Hana	_2_1_4_+_P (x3)
+OROCHI IORI	special	212 Shiki: Kototsuki In	_6_3_2_1_4_+_K
+OROCHI IORI	special	Kuzukaze	close _4_1_2_3_6_+_P
+OROCHI IORI	dm	Kin 1211 Shiki: Ya Otome	_2_3_6_3_2_1_4_+_P
+OROCHI IORI	dm	Ura 108 Shiki: Ya Sakazuki	_2_1_4_1_2_3_6_+_P (_O_P_+_K)
+OROCHI LEONA	throw	Leona Crush	_4 / _6_+_C
+OROCHI LEONA	throw	Order Buckler	_4 / _6_+_D
+OROCHI LEONA	throw	Heidern Inferno	_^_4 / _6_+_C / _D
+OROCHI LEONA	special	Baltic Launcher	^4_6_+_P
+OROCHI LEONA	special	Moon Slasher	^2_8_+_P
+OROCHI LEONA	special	Ground Saber	^4_6_+_K
+OROCHI LEONA	special	^!Gliding Buster (with _D)	_6_+_D
+OROCHI LEONA	special	X-Caliber	^2_8_+_K
+OROCHI LEONA	special	I-Slasher	_2_1_4_+_P
+OROCHI LEONA	dm	V-Slasher	_^_2_3_6_3_2_1_4_+_P
+OROCHI LEONA	dm	Rebel Spark	_2_1_4_1_2_3_6_+_K
+OROCHI LEONA	dm	Gravity Storm	_2_3_6_2_3_6_+_P
+OROCHI YASHIRO	throw	Baku	_4 / _6_+_C
+OROCHI YASHIRO	throw	Beki	_4 / _6_+_D
+OROCHI YASHIRO	command	Bu	_6_+_B
+OROCHI YASHIRO	special	Kujiku Daichi	_2_1_4_+_P
+OROCHI YASHIRO	special	Niragu Daichi	close _4_1_2_3_6_+_P
+OROCHI YASHIRO	special	Musebu Daichi	close _6_3_2_1_4_6_+_P
+OROCHI YASHIRO	special	Odoru Daichi	_4_1_2_3_6_+_K
+OROCHI YASHIRO	dm	Ankoku Jigoku Gokuraku Otoshi	close _6_3_2_1_4_6_3_2_1_4_+_P
+OROCHI YASHIRO	dm	Araburu Daichi	close _4_1_2_3_6_4_1_2_3_6_+_P
+OROCHI YASHIRO	dm	Hoeru Daichi	_2_3_6_2_3_6_+_P (_O)
+OROCHI SHERMIE	throw	Bakurai	_4 / _6_+_C
+OROCHI SHERMIE	throw	Enrai	_4 / _6_+_D
+OROCHI SHERMIE	command	Kourai	_6_+_B
+OROCHI SHERMIE	special	Mugetsu no Rai'un	_4_1_2_3_6_+_P / _K
+OROCHI SHERMIE	special	Yatanagi no Muchi	_2_1_4_+_P
+OROCHI SHERMIE	special	Shajitsu no Odori	_2_1_4_+_K
+OROCHI SHERMIE	special	Raijin no Tsue	_^_2_3_6_+_K
+OROCHI SHERMIE	dm	Ankoku Raiko Ken	_2_3_6_2_3_6_+_P
+OROCHI SHERMIE	dm	Shukumei, Gen'ei, Shinshi	_2_1_4_1_2_3_6_+_K
+OROCHI CHRIS	throw	Chi no Batsu	_4 / _6_+_C
+OROCHI CHRIS	throw	Ten no Tsumi	_4 / _6_+_D
+OROCHI CHRIS	command	Muyou no Ono	_6_+_A
+OROCHI CHRIS	special	Taiyou o Iru Honoo	_2_3_6_+_P
+OROCHI CHRIS	special	Tsuki o Tsumu Honoo	_6_2_3_+_P
+OROCHI CHRIS	special	Kagami o Hofuru Honoo	_2_1_4_+_P
+OROCHI CHRIS	special	Shishi o Kamu Honoo	close _4_1_2_3_6_+_P
+OROCHI CHRIS	dm	Ankoku Orochinagi	_2_1_4_1_2_3_6_+_P (_O)
+OROCHI CHRIS	dm	Daichi o Harau Gouka	_2_3_6_2_3_6_+_P
+OROCHI	throw	Arahabaki	_4 / _6_+_C / _D
+OROCHI	special	Harae	_2_3_6_+_A
+OROCHI	special	Utsushi Iwai	_2_3_6_+_B
+OROCHI	special	Utsushi Iwai	_2_3_6_+_C
+OROCHI	special	Tadasu	_2_3_6_+_D (reflect projectile)
+OROCHI	special	Ho no Susori	_6_3_2_1_4_+_P / _K
+OROCHI	dm	Oomiwa	_2_1_4_+_P
+OROCHI	dm	Marokare	_6_2_3_+_P

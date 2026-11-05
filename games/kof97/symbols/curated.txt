@@ -1,0 +1,1255 @@
+# Stage-3 symbols for the KOF97 matching disassembly (tools/disasm/mkasm.py).
+#   ADDR  NAME  [| comment]
+# P1 addresses (< 0x100000) name a code/data label (the original L_/D_ label stays as an alias, so the
+# shift-test tools keep working); other addresses become .equ constants used for absolute operands.
+# Sources: Neo Geo hardware/BIOS documentation (registers, BIOS calls and BIOS work RAM), REA/Ghidra
+# pseudocode (build/rea/decomp_p1) and runtime observation (--watch / --break / --exec-log).
+
+# ---- 68000 vectors / cartridge header (fixed addresses read by the BIOS) ---------------------------
+00010e  HDR_BACKUP_RAM_PTR   | header: work RAM area saved to MVS backup RAM
+000112  HDR_BACKUP_SIZE      | header: size of that area
+000115  HDR_EYECATCH_BANK    | header: sprite bank of the eye-catcher logo
+000116  HDR_SOFTDIP_JP       | header: pointer to the Japanese soft-DIP table
+00011a  HDR_SOFTDIP_US       | header: pointer to the US soft-DIP table
+00011e  HDR_SOFTDIP_EU       | header: pointer to the European soft-DIP table
+000122  USER                 | header jump: BIOS -> game request (BIOS_USER_REQUEST 0..3)
+000128  PLAYER_START         | header jump: a player pressed start
+00012e  DEMO_END             | header jump: demo ended
+000134  COIN_SOUND           | header jump: coin inserted
+000182  HDR_SECURITY_PTR     | header: pointer to the security code
+0a0a00  SOFTDIP_JP           | soft-DIP table (names and values shown in the BIOS test menu)
+0a0be8  SOFTDIP_US
+0a0dd0  SOFTDIP_EU
+
+# ---- game code ------------------------------------------------------------------------------------
+000192  VEC_UNUSED           | handler of unused exception vectors / level-3 (cold boot) interrupt
+000800  fix_clear            | fill the 40x32 fix map with tile 0x20 and reset BIOS_MESS_POINT
+00083e  sound_sync           | handshake with the Z80 sound driver
+0008d2  USER_EYECATCH        | USER request 1: eye-catcher (boot logo) sequence
+0009cc  palette_clear        | clear both palette banks
+0030b2  obj_spawn            | allocate an object slot: A0 = handler, D0 = priority -> A1 = object
+00318e  work_ram_clear       | clear game work RAM
+00345e  obj_apply_velocity   | add velocity (+0x58) and acceleration (+0x5c) to an object's position
+0076ae  sound_flush_queue    | send queued sound commands (ring buffer SND_QUEUE) to REG_SOUND
+009868  USER_MAIN            | USER request dispatcher: jump table on BIOS_USER_REQUEST
+009898  game_init            | common initialisation for USER requests (bank, LSPC mode, country)
+0099f2  USER_INIT            | USER request 0: initialise, register in MVS backup RAM, SYSTEM_RETURN
+009a44  USER_EYECATCH_JMP    | USER request 1 -> USER_EYECATCH
+009a4a  USER_DEMO            | USER request 2: attract demo (checks the lockout flag first)
+009ab8  USER_TITLE           | USER request 3: title / game (checks the lockout flag first)
+009b30  display_reset        | reset the display (BIOS LSP_1ST, fix layer, sprites)
+009c38  main_loop            | per-frame loop: wait for VBLANK_DONE, read inputs, run the game
+009de0  obj_run_list         | run every object in the priority list: jsr to the handler at (A4)
+009ea2  VBLANK_IRQ           | level-1 interrupt: BIOS handler until the game sets BIOS_SYSRET_STATUS bit 7
+009eb0  vblank_game          | game VBlank: palette/VRAM uploads, frame counter, SYSTEM_IO, sound queue
+009f5e  TIMER_IRQ            | level-2 interrupt (LSPC timer): acknowledge only
+009f68  read_controllers     | read REG_P1CNT / REG_P2CNT (with button remapping)
+00a108  read_start_buttons   | read REG_STATUS_B (start/select)
+00a29c  palette_upload       | copy the palette buffer to palette RAM (bank select)
+00a714  vram_upload_sprites  | transfer sprite control blocks from work RAM buffers to VRAM
+00a806  vram_upload_queue_a  | transfer a queued VRAM block
+00a8ce  vram_upload_queue_b  | transfer a queued VRAM block
+00adb0  backup_register      | MVS backup RAM registration; its long busy loop is cut short by the
+                             | watchdog on genuine boards (see AGENT.md 5: anti-bootleg check)
+00ae1c  backup_unlock        | select the backup RAM slot and unlock SRAM
+00ae62  backup_flag_clear    | write 0 to the lockout flag 0xd00100
+00ae6c  backup_flag_set      | write 1 to the lockout flag 0xd00100
+00ae76  lockout_screen       | print a lockout message and loop forever (watchdog kicks only)
+00ae9a  lockout_warning      | "WARNING ... FOR USE WITH ORIGINAL SNK BOARDS ONLY" and loop forever
+00aebe  fix_print            | print a 0xff-terminated string to the fix map (D7 = VRAM address)
+00af00  palette_load_lockout | palette for the lockout screens
+01e374  obj_spawn_child      | spawn a child object (calls obj_spawn)
+
+003026  random               | D0 = pseudo-random byte: raster line + RNG counters index BIOS table RANDOM_TABLE
+00304e  obj_list_init        | reset the object priority list (head handler = rts)
+00331e  fixmul               | D0.l = D0.l * D1.w / 65536 (signed, rounded): velocity scaling
+0058aa  obj_anim_step        | advance the animation script; negative bytes are commands (jump table)
+00584c  obj_set_anim         | start animation (+0x70 id, +0x72 variant) unless already playing; then step
+007646  sound_init           | reset SND_QUEUE and queue the start-up sound commands
+007700  sound_play           | D0 = sound id -> 2-byte driver command from SOUND_CMD_TABLE, queued
+007760  obj_init_static      | set up fixed object slot D0 (256-byte slots at STATIC_OBJS): A0 = handler
+0122c8  obj_face_target      | set the facing bit (+0x31 bit 0) from the X positions in D2/D3
+0140fe  player_load_move_attrs | copy per-animation attribute bytes (tables at 0xa4a90..) into the player
+01e44e  obj_apply_friction_x | X velocity (+0x50) *= friction (+0x54), then add to X (+0x18)
+00366e  collision_add_a      | add the current object (A4) to collision list A (COLL_LIST_A)
+003686  collision_add_b      | add the current object to collision list B (COLL_LIST_B)
+003698  collision_resolve    | check every object of list A against list B (only if both are non-empty)
+006cae  fix_clear_visible    | fill the visible fix rows (2-29) with blank tile 0x20, palette 15
+007f7c  obj_queue_palette    | if the object's palette (+0x2e) changed, queue a palette load
+01fe3e  select_cursor_char   | member select: cursor slot -> character ID + Orochi flag for the current pick
+0a95e2  SELECT_GRID_CHARS    | cursor slot -> character ID (slots 32-34 = 21-23 with the Orochi flag)
+0a9628  SELECT_GRID_FLAGS    | cursor slot -> Orochi-version flag
+0a15c6  SOUND_CMD_TABLE      | sound id -> 2-byte sound driver command (prefix, id)
+
+# ---- core engine, select screens, round flow, HUD (code every kind of run executes; namecov.py) -----
+# Named from the code plus --break / screenshot evidence; addresses inside a function are branch or
+# jump-table targets (state handlers). Unrolled loops: vram_copy_words / vram_fill_words jump into them.
+001a10  hud_draw_start_prompts | top-row prompts per player (PRESS START / INSERT COIN / GAME OVER / PLEASE WAIT, blinking); returns early when both players are in the game
+0034a0  atan2_distance       | D0/D1 = (x1,y1), D2/D3 = (x2,y2) -> D0.b = angle 0-255, D1 = distance (BIOS tables 0xc02000 / 0xc03000)
+004186  palette_cycle_fx     | object handler: every 4 frames queue the next of 15 frames of palettes 0xf8/0xf9 (ROM 0x2ff5f0 / 0x2ff7f0)
+00429a  stage_load_palettes  | D0 = stage: load the stage palettes and LSPC auto-animation speed, then the tinted palette queue
+004b8c  palette_queue_load   | D1 = ROM palette index (0x2cfff0 + D1*32), D2 = first palette, D3 = count-1: append to the palette queue
+00513a  palette_fade_step    | A0 = current RGB list, A1 = target: step each component toward the target, queue the result
+0053ba  palette_fade_unpack  | A4 = fader: unpack the source (+0xa) and target (+0xe) ROM palettes into RGB buffers +0x22 / +0x112
+005bc0  sprite_draw_requests | every frame: run the sprite draw request list (count 0x2e6c) with P-ROM bank 1 selected
+005da0  sprite_setup_frame   | A0 = animation cel, A4 = object: frame header, size/zoom, culling; SCB4 X to VRAM, SCB3 Y/height to the buffer
+00605c  sprite_write_tiles_mask16 | SCB1 tiles for frame formats 0/4: a 16-bit mask per column selects the rows that get tiles
+006f60  fix_print_positioned | as fix_print_at, position taken from the string header
+006f6c  fix_print_at         | D2 = fix VRAM address, A0 = string (attribute byte, chars, 0x0d0a newline, 0xfe new header, 0xff end)
+00722c  fix_print_tall_at    | as fix_print_at with 8x16 characters (tile c, then c+0x100 one row lower)
+007788  bg_layer_init        | A4 = layer object, D0 = SCB1 base, D1 = columns, A0 = layer descriptor: SCB2/3/4 addresses, position, map
+007a9c  bg_layer_queue_position | A4 = layer object: queue SCB4 X and SCB3 Y/height per column for the VRAM upload
+00a2f4  vram_copy_words      | A0 = source, A1 = REG_VRAMADDR, D3 = count (<= 128): jump into the unrolled copy to REG_VRAMRW
+00a504  vram_fill_words      | fill counterpart of vram_copy_words (writes D0)
+00a946  hud_health_bars_upload | copy the dirty health-bar row buffers (A5+0x6c82 P1, A5+0x6ca2 P2) to the fix layer
+00a978  fix_write_row13      | A0 = 13 tiles, D0 high word = fix VRAM address: write them along one row (column step 0x20)
+00bcba  title_screen_init    | title scene (USER_TITLE): reset objects and fix layer, logo sprites, sounds; then the TIME countdown
+0111e6  player_check_ground_attack | A6 = input block: standing/crouching normals, blowback (C+D), roll (A+B), taunt -> D0 = result
+011ebe  players_init         | set up both player objects for a fight: chr_data blocks, opponents, start X, facing, full health
+012046  player_load_char_tables | A2 = chr_data block, A4 = player: copy the character's records (id at +0x70) from the 0xa3710.. tables
+0126c2  player_update_common | per-frame player bookkeeping after obj_set_anim: frame tick, airborne flag, timers, input edges
+012d54  player_spawn_hit_spark | D0 = hit type (+0xad), D1 = strength (+0xac): spawn the hit effect object(s)
+0165a4  player_hit_reaction_normal | hit reaction for ordinary hits (type < 0x18): reaction id from table 0xa82ae into +0x12f
+01fb1e  select_side_init     | team select: per-side controller (+0x170 = side), cursor/frame objects, CPU logic when not player-controlled
+020816  select_cpu_pick_team | CPU side: after a random delay, fixed teams for special stages, else start the team roulette
+020b5c  select_cpu_team_update | CPU side, per frame: copy the team's members into the select block, colours, special opponents
+0214e4  select_member_pick_color | A0/A1 = own/other select block, A6 = member slot: colour, flipped when both sides have the character
+0217b0  select_member_enter  | after 60 frames slide the chosen member's large figure in from the screen edge
+021a20  select_mode_spawn    | spawn the ADVANCED/EXTRA mode select input handler and its two label sprites for this side
+02244c  order_select_cursor  | order select: per-side cursor; picks the fighting order into select block +0xa..0xc (CPU: random)
+022836  order_select_spawn_fighters | order select: spawn the three team members per side, sliding in from the edges
+022b52  order_select_title   | "ORDER SELECT" title object: flash in at the top, spawn the fade object
+023126  select_bg_init       | character select background: fade/scroll parameters, palette, static objects 0-7 (background, logo pieces)
+023330  select_bg_main       | select background (static object 0): sprite columns, fade in, white flash when the logo is complete
+023432  select_logo_piece1_main | select logo piece (static object 1): load tiles, wait, slide to its target, count arrivals (0x1085d1)
+0239ea  select_logo_piece7_init | select logo piece (static object 7): sprites, SCB2-4, start/target position
+0241f0  round_next_setup     | round flow, later rounds: re-init the players keeping power/stock; the survivor keeps their health
+0243f4  round_intro_skip     | skip the pre-fight intro: shutter wipe, players straight to the ready state
+024674  round_first_setup    | round flow at stage start: init players and HUD (match_setup_players), intro handler
+024f16  round_end_transition | round over: wait, close the shutter wipe, health bonus for the next round, then the next handler
+02515c  match_setup_players  | clear and load both player objects from the select blocks, spawn the per-match HUD/effect objects
+0256b4  intro_emblem_main    | pre-fight intro: KOF'97 emblem pieces, then the VS plate
+025cb6  intro_vs_plate_fade_in | VS plate: fade in, then the two name plates
+026a9e  round_banner_letter  | one letter of the ROUND banner: delay, slide in, flash, wait, slide out
+026e18  round_ready_letter   | one letter of the READY banner: delay, slide in from the right, count arrivals in the parent, slide out
+02818a  round_winner_banner  | WINNER text after a KO: drop in and bounce, palette flash, wait, delete when the parent is done
+029462  hud_draw_health_bar  | (inside the per-player HUD update) A4 = player: health + drain -> row of 0xabeee into the bar buffer, red when low
+029e50  hud_portrait_state_wait | HUD portrait object, state 0: count down, then slide in
+02a05a  hud_draw_team_icons  | A4 = portrait object: 2x2 fix icons of the other team members (defeated = grey), fix row 7
+02a206  team_spawn_sideline_members | A4 = player: spawn the waiting team members at the screen edge
+02a36a  team_sideline_member_react | waiting team member: cheer / dejected / idle pose from the active fighter's state
+070bf6  howto_clear_and_init | how-to-play screen: clear the fix layer, then set up the screen (demo fighters, button sprites)
+0711c4  howto_kyo_demo       | how-to-play demo fighter (Kyo): joystick/button demo animations in step with the scene
+0725c0  nextstage_spawn_sprites | NEXT STAGE screen: spawn the text, globe and ring sprites, sound and music
+0727ac  nextstage_script_step | NEXT STAGE background sequencer: (scene, frames) pairs from 0xaed92
+073b74  nextstage_bg_a_scene0 | NEXT STAGE background layer A, scene 0: reset, clear strips, write the tile map
+073dfc  nextstage_bg_b_scene0 | NEXT STAGE background layer B, scene 0: reset and clear strips
+0a036c  poutput_send_next    | send the next queued byte of the comm block at (0x10fe70) on REG_POUTPUT (raster window, CCR = result)
+0a0458  poutput_send_byte    | D0.b: bit-bang 8 bits LSB first plus odd parity on REG_POUTPUT (bit 2 data, bit 5 clock)
+
+# ---- hit reactions, CPU AI, stage objects, win screen, story, character moves (namecov.py batch 2) -------
+# chr_oyashiro_ / chr_oshermie_ / chr_ochris_: the Orochi versions (player +0x1d6 set) have their own input
+# routines and moves. Character move names describe what the move does (official names not verified).
+002934  fix_shutter_close_step | fix-layer shutter: fill two rows each from the top (A5+0x5b98) and bottom (A5+0x5b9c) with tile 0x300; D0 = -1 when closed
+0029f0  fix_shutter_open_step | counterpart of fix_shutter_close_step: the shutter rows move back out
+004d42  palette_queue_list_brightness | A0 = (ROM palette, destination) list ending negative: queue each darkened by (A5+0x592c)/2 per component
+005caa  sprite_draw_request_add | A4 = object: insert it into the priority-bucketed draw list (A5+0x286a)
+005cb2  sprite_draw_request_copy | copy the object's draw fields into a slot of the per-frame pool (0x108700) and insert it; D6 = -1 when full
+005f96  sprite_write_shrink  | A4 = object: SCB2 shrink values for each of its sprite columns (zoom A5+0x64e6 / 0x64e8)
+006b4e  hud_print_score      | print a player's 7-digit BCD score (+0x100): high 3 digits, then 4 (tens and ones always shown)
+006b68  fix_print_bcd3       | A0 = fix VRAM address, D0 = 3 BCD digits: print with leading-zero suppression
+006ba0  fix_print_bcd4       | as fix_print_bcd3 for 4 digits
+007822  bg_layer_init_stage  | bg_layer_init for stage backgrounds: descriptor X/Y in pixels, wider cull window, map start at +0x84
+00a7a0  vram_upload_sprites_clear_prev | (inside vram_upload_sprites) hide the old double-buffer half and clear the SCB3 work buffer
+00a816  vram_upload_queue_a_flush | (inside vram_upload_queue_a) for each queued entry: two (VRAM address, count, words) runs via the unrolled copy
+00a8de  vram_upload_queue_b_copy | (inside vram_upload_queue_b) copy each (VRAM address, count, words) block of queue B
+00f43e  player_state_stand   | player neutral state: idle/turn animation, then specials, run/backstep, ground attacks, walk/jump/crouch
+01417e  player_hit_attack_damage | A4 = victim: the attack's hit values from the attacker's chr_data (halved for repeated hits of one attack)
+01674c  player_hit_reaction_guard | hit reaction when guarding: go to the blockstun state
+016bbc  player_hit_stun_ground | hit reaction: ordinary standing/crouching hitstun (hit-stop, pushback with friction, back to neutral)
+016de2  player_hit_knockdown_launch | hit reaction: high-arc launch, land, bounce, lie down, get up (or quick recovery)
+01733e  player_hit_knockdown_blowaway | hit reaction: blown far away, screen quake on landing, bounces, lie down, get up
+017bee  player_hit_air_spike | hit reaction: airborne victim driven straight down, quake, bounce, lie down, get up
+017f04  player_hit_air_recover | hit reaction: airborne hit without knockdown, land on the feet (input can cut the recovery)
+0180de  player_guard_stun    | blockstun: hit-stop, guard cancel check (C+D), pushback, guard stance from the joystick
+018290  player_guard_stun_input_left | blockstun, joystick left: standing guard when left points away from the opponent
+01d2f8  chr_mary_check_specials | Mary's ground special/desperation move check (command slot +8)
+01e2fa  player_special_start | start a special move: face the opponent (obj_face_target), then player_special_start_noturn
+01e300  player_special_start_noturn | start a special move without turning (air specials)
+01e618  player_intro_jump_in | next team member enters the round: jump in from the screen edge and land at camera X + 0x50 / 0xf0
+020028  select_identify_team | A4 = select side: match the three members against the nine teams (0xa9174) -> team or special combo code
+021bfa  select_mode_label_main | ADVANCED/EXTRA label sprite: slide in, report to the parent, swap when the mode changes
+024c4c  round_score_bonus    | A0 = round winner: BCD score bonuses for time left and health
+0259f4  intro_emblem_skip    | intro emblem when skipped: all KOF'97 emblem pieces at once, fade, then the VS plate
+025b78  intro_vs_name_print  | VS screen name plate: print the fighter's name in tall fix characters, then delete itself
+025df6  stage_round_girl_main | round girl (stages < 6, from round 2): wait, raise the round card, walk off
+025e6e  stage_round_card_main | the round girl's card: follows her, shows the round number
+0266ee  round_announce_main  | ROUNDSYS object: spawn the ROUND (or FINAL) letters, then the round number
+026bfe  round_number_digit   | round number under ROUND: appear, round voice, wait, fly off upward
+026f18  round_go_half        | one half of GO! (+0xce = side): slide to the centre, wait, fly out
+0275f2  round_over_tally     | round over, first frame: perfect flag, win and round counters, then result banners or the next round
+027f82  round_winner_announce | after a KO: WINNER banner, IS, the winner's name, then the announcer object
+02cfe0  cpu_generate_input   | CPU-controlled player: fill its virtual input block (A6) from the AI decision logic each frame
+02df9c  cpu_ai_select_script | CPU AI: next action script from table[character][distance band][opponent move][category] + random
+03763c  chr_andy_dash_elbow  | Andy: forward dashing elbow (light/heavy from +0x1a4 bit 4)
+03be66  chr_robert_air_dive_kick | Robert air special: diagonal dive kick, bounces off on hit
+0474ec  chr_kensou_air_dive_punch | Kensou air special: diagonal fist-first dive
+051670  chr_choi_air_dive_kick | Choi air special: straight diagonal dive kick without gravity
+052462  chr_choi_throw       | Choi's normal throw (throw table index 47): clings to the opponent, repeated hits
+05322c  chr_oyashiro_slam_grab | Orochi Yashiro command grab (throw index 0x7e): gut hit, lift, slam
+053a76  chr_oyashiro_dm_grab_a | Orochi Yashiro desperation grab A (throw index 0x81; more hits in the MAX version)
+053bd6  chr_oyashiro_dm_grab_a_victim_launch | victim side of desperation grab A: the final blow launches the victim
+053f24  chr_oyashiro_dm_grab_b | Orochi Yashiro desperation grab B (throw index 0x82): punches, then leaping slam; normal grab when not affordable
+056344  chr_oshermie_energy_ball | Orochi Shermie projectile: button strength chooses speed and offset
+0565ae  chr_oshermie_lightning_palm | Orochi Shermie: step forward and thrust a palm with an electric spark
+057952  chr_ochris_flame_pillars | Orochi Chris: spawn three flame pillars along the ground
+057a60  chr_ochris_flame_pillar | Orochi Chris: one flame pillar
+057b40  chr_ochris_flame_pillar_resume | flame pillar callback (+0x19c/+0x1a0): restore the saved handler after a hit
+057d04  chr_ochris_flame_leap | Orochi Chris: leap forward-up and spawn a flame during the leap
+065b3c  chr_shingo_hop_kick  | Shingo kick special: forward hop with a kick
+06a406  stage_chicken_init   | stage 2 of the spawn lists (D_0aceb0): the chicken in the background
+06a44e  stage_chicken_main   | stage chicken: state dispatch on +0xca
+06a5aa  stage_chicken_hop    | stage chicken, state 7: hop toward the target X (+0xce) a number of times (+0x88), then state 8
+06a786  stage_chicken_turn   | stage chicken, state 1: turn animation, then walk until X reaches +0xce
+06b1ca  stage_korea_cameraman_init | stage 4 (Korea): the cameraman in the background
+06b200  stage_korea_cameraman_start | stage cameraman: when the fight starts (0x2841 bit 6), start following the fight
+06b556  stage_korea_cameraman_track | stage cameraman: target = midpoint of the players' X, distance and direction
+06b83e  stage_circuit_bystander_init | stage 5 (D_0ad010): background figure; replays its animation on impact (trigger bit 0 of 0x6cfe)
+06bbd2  stage_orochiteam_lightning_main | stone-pillar storm stage: lightning controller (idle while 0x283e bit 2 is set)
+06bc40  stage_orochiteam_lightning_pick | lightning controller: after a random delay pick a pillar pair or a free bolt from the camera X
+06bdb6  stage_orochiteam_bolt_outer_pillar | D0 = side: lightning strike on an outer pillar; counts the hit
+06bfe8  stage_orochiteam_bolt_floor | free lightning bolt (type 0/7): random facing and X in view, floor Y
+06c496  stage_orochiteam_pillar_outer_crack | outer pillar, first hit: two debris chunks, broken-top animation, wait for them to land
+06c6e0  stage_orochiteam_pillar_mid_collapse | middle pillar, second hit: two debris chunks, then the pillar is removed
+06eb12  winscreen_portrait_fly_in | (never seen running) team win screen portrait: wait for the others, then home in on its slot
+06ec4c  winscreen_member_portrait | team win screen: portrait of a team member other than the winner
+06ed98  winscreen_bg_init    | team win / bonus tally screen, static object 0: background layer, fade in
+07782a  nextmatch_cpu_team_setup | between matches: fill the CPU side's select block with the next unbeaten team and its members
+07c67a  cutscene_scene8_init | story scene 8 (after the Orochi team match): reset, music, per-team script, dialogue box
+0873c6  cutscene_fade_build_list | A1 = palette fader, A2 = (palette, ROM index) list: copy it, substituting the team members' palettes
+
+# ---- continue, rankings, attract intro, guard, power gauge, K.O./TIME OVER, endings, text (namecov.py batch 3) --
+# Character move names describe what the move does (official names not verified).
+001c30  hud_draw_title_prompt | title/demo: blinking INSERT COIN / PRESS 1P OR 2P BUTTON prompt from the credits
+00543c  palette_fade_unpack_pairs | as palette_fade_unpack with (ROM palette, destination) pairs for the target too
+005aa2  sprite_calc_screen_pos | object screen X/Y (+0x24/+0x26) from world position, offsets and camera layer, zoom
+0070c0  fix_print_big_positioned | as fix_print_big_at, position taken from the string header
+0070cc  fix_print_big_at     | as fix_print_at with 16x16 characters (2x2 tiles)
+007348  text_print_step      | text box typewriter step: byte-coded (A5+0x2845 != 0) or word-coded Japanese text
+00743c  text_print_step_latin | text box typewriter step, byte-coded text: next char every +0xc8 frames; 0x0d newline, 0xfe clear, 0xff end
+00790e  bg_layer_draw_full   | redraw the whole visible tile map of a background layer object
+00b2aa  ranking_scene_init   | attract rankings scene
+00b440  ranking_controller   | attract rankings: run the ranking pages
+00b4c4  ranking_chars_init   | CHARACTERS RANKING page: title, tie-aware ranks from the backup-RAM usage counts, ten rows
+00b5f8  ranking_chars_row_init | one CHARACTERS RANKING row: portrait, usage percentage, staggered start
+00b6c2  ranking_chars_row_show | (state of ranking_chars_row_init) shrink the portrait in, print name, percentage, crown for 1-3
+00b7fe  ranking_score_init   | SCORE RANKING page
+00b8ca  ranking_score_row_print | SCORE RANKING row (+0xd8 = rank): ordinal, initials, score; then delete
+00b9c6  ranking_score_spawn_teams | SCORE RANKING: team portraits of rank 1, then ranks 2-5
+00ba44  ranking_score_spawn_team_rows | SCORE RANKING: team portraits for ranks 2-5, sliding in from alternating sides
+00bdd6  attract_intro_init   | attract intro movie scene
+00c1fe  attract_intro_step_daimon | intro movie step: background maps, sound, sprites with flying rocks (Daimon shot)
+00c2d4  attract_intro_step_leona | intro movie step after the eclipse: darker palettes, new maps, flames (Leona shot)
+00df4a  attract_intro_face_closeup | intro movie sprite: face close-up on a red backdrop, white flash
+00e1d8  attract_intro_letter_delay | intro title letters (THE KING OF FIGHTERS '97): staggered start delay
+00e1fa  attract_intro_letter_animate | intro title letters: animate until the animation ends, then delete
+010292  player_guard_stand_start | walking back while an attack comes: start the standing guard
+010304  player_guard_stand_back_start | standing guard entry animation, back held: then the held guard pose
+01036e  player_guard_stand_hold | standing guard pose held
+0103a6  player_state_guard_stand | standing guard state (joystick table D_011b86)
+0103e4  player_guard_hold_back | standing guard, back still held: stay in the guard state
+010490  player_guard_pose_stand_exit | standing guard pose released: at the animation end back to player_state_stand
+01055a  player_guard_pose_crouch_enter | crouching guard pose start: at the animation end the held crouch guard
+010d26  player_power_charge  | EXTRA mode A+B+C held: charge animation and voice, power gauge += 0x180 per frame
+011672  player_check_power_charge | EXTRA mode, A+B+C held while free: go to player_power_charge
+011fc8  player_init_fighter  | per-player fight init: neutral state, hooks, character offsets, palette, position, full health
+014d54  player_afterimage_init | player after-image trail object: copy the parent's sprite state, then player_afterimage_main
+014db8  player_afterimage_main | after-image trail: 3-frame history of the parent's sprite, three ghosts on alternate frames
+0150f6  player_win_pose      | round winner: wait, then a win pose chosen by the held button (else random)
+0155e4  player_round_end_result | round over: winner / loser / draw state from the health comparison
+015770  hud_combo_count_draw | D7 = BCD hit count: draw the combo counter and HITS on the fix layer
+01633e  player_attack_connect | attacker's hook when its attack connects (+0xae): dispatch on +0xf5
+016388  player_attack_hitstop | attack connected (player body): hitstop, buffered cancel into next_state, else resume
+0190ac  player_hit_sound     | on hit or guard: impact sound for the hit class, sometimes a damage voice
+01b3a0  chr_clark_check_specials | Clark's ground special/desperation move check (command slot +8)
+02070e  select_cpu_side_init | team select, CPU side: reset, restore the team on a continue, else pick after a random delay
+021d8c  select_mode_label_selected | ADVANCED/EXTRA label of the chosen mode: wait for confirm, then slide off-screen
+022012  order_select_begin   | order select: timer frame, both cursors, 16-second countdown
+02211a  order_select_shutter_wait | order select done: wait for the shutter to close
+022122  order_select_end     | after the shutter: clear the select state, start the match scene, per-mode setup
+023852  select_logo_piece4_init | select screen static object 4: overlay layer that follows logo piece 1
+0238da  select_logo_piece5_init | select screen static object 5: overlay layer that follows logo piece 2
+023962  select_logo_piece6_init | select screen static object 6: overlay layer that follows logo piece 3
+02555e  round_next_carry_over | later rounds: who keeps health, gauge and stocks; new members' stocks from 0xac698
+025790  intro_emblem_spawn_slider | intro emblem after 20 frames: spawn the last piece and the sliding piece, fade the palette down
+025880  intro_emblem_spawn_vs_plate | intro: spawn the VS plate, brighten the palette back
+027010  round_timeover_announce | TIME OVER: sound, health snapshot, the two halves, then round_winner_announce
+0271dc  round_timeover_half  | one half of the TIME OVER banner: slide in, count arrival, fly out
+027ce4  round_ko_half        | one half of the K.O. banner: delay, appear, backdrop flash, then round_ko_half_exit
+027e20  round_ko_half_exit   | K.O. banner half: wait for the parent, fly off sideways
+02836c  match_side_lost      | A4 = player whose team lost: CPU side -> next stage; versus -> select; human -> continue or game over
+0285b4  match_cpu_lost       | the CPU side lost the match: record the beaten team, next stage / story
+028868  hud_power_gauge_update | per player: power gauge HUD state machine (table by power mode +0x1d5)
+0288f2  hud_pow_gauge_adv_fill | POW gauge (ADVANCED), state 0: redraw on power change, stock gain -> state 1
+0289d4  hud_power_max_idle   | power gauge HUD, MAX indicator state 0: wait until powered up
+02dd5c  cpu_ai_classify_distance | CPU AI: behaviour table by situation, distance band 0-4 (+0x172) from |dx|
+03044e  chr_kyo_qcf_k_hop    | Kyo qcf+K: hop forward-up, light/heavy from +0x1a4 bit 5
+030656  chr_kyo_qcf_a_rush   | Kyo qcf+A: first move of a chain (follow-ups qcf+P / hcb+P; the CPU picks at random)
+030802  chr_kyo_qcf_a_qcf_p_followup | Kyo qcf+A chain, qcf+P follow-up
+030a30  chr_kyo_qcf_a_hcb_p_followup | Kyo qcf+A chain, hcb+P follow-up (itself chains to K or P)
+0394cc  chr_joe_leaping_kick | Joe kick special: leap forward in an arc and kick
+03dca2  chr_yuri_qcb_k_leap  | Yuri qcb+K: forward leaping attack
+047718  chr_kensou_grab_rush | Kensou command grab (throw index 0x69): hold and advance hitting, C extends it
+047da8  chr_kensou_dm_grab   | Kensou desperation grab (throw index 0x6a); normal grab when not affordable
+049e3a  chr_chizuru_dp_c     | Chizuru dp+P, C version: afterimage child, warps back to the saved position
+053804  chr_oyashiro_qcb_p_hop | Orochi Yashiro qcb+P: hopping attack, A/C variants
+056816  chr_oshermie_dm      | Orochi Shermie desperation move (more children in the MAX version)
+067d6c  stage_kecak_crowd_init | stage 2 spawn list entry: background crowd and torch (nothing on the empty-stage variant A5+0x6c35)
+067d74  stage_kecak_crowd_setup | stage crowd: timer, animation tables, random sequences; drawn only when the camera is far right
+06aad0  stage_lion_dance_init | stage 3 spawn list (D_0acf6e): the lion dancers
+06ab1a  stage_lion_dance_main | lion dancers: step machine (sequence D_0ad686, step inits D_0ad59e, handlers D_0ad612)
+06adae  stage_lion_dance_step_walk | lion dance step: walk (x += vx) until the animation ends, then the next step
+06c270  stage_orochiteam_floor_spark_a | floor spark effect before a lightning strike (type 0 of the spawner 0x6c1fa)
+06e2ca  fix_typewriter_text_obj | object: type the string at +0x88 onto the fix layer char by char with a sound and cursor; then tell the parent
+06e8cc  winscreen_bonus_tally_step | win screen: move the bonus counters (LIFE/TIME/PERFECT/STRAIGHT) into the score step by step
+072a3e  nextstage_stage_photo | FIRST/NEXT STAGE screen: the stage photo (variant by stage A5+0x27ea)
+072a46  nextstage_stage_photo_open | stage photo after its delay: open vertically, white flash copy, wait, delete
+07402c  continue_scene_init  | continue screen scene
+074594  continue_bg_init     | continue screen, static object 0: background layer (KOF'97 logo)
+0746e4  continue_countdown_init | continue screen, static object 1: large countdown digits 9 to 0, palette flash each second
+07d548  ending_team_init     | team ending scene after the final boss: members, ending script D_0b2990[+0xc6], cutscene interpreter
+07febc  cutscene_setup_team_members | cutscene: winning side's team -> ending index (+0xc6) and members, then cutscene_load_member_palettes
+07ff86  cutscene_load_member_palettes | cutscene: load the three members' palettes, start a palette fade
+086890  score_name_entry_init | after the ending: TOTAL SCORE screen with the team, then name entry
+0a00d2  poutput_queue_write  | append bytes to the ring buffer of the comm block at (0x10fe70)
+0a067a  poutput_steady_set   | REG_POUTPUT comm block: stop blinking, output steady on/off
+0a0682  poutput_blink_start  | REG_POUTPUT comm block: blinking output on channel D1 (on/off frame pair by D0)
+
+# ---- start/credits, palettes, animation, grabs, guard, dizzy, shadows, NEXT STAGE globe/info, continue, game over,
+# ---- interlude, stage objects, character moves (namecov.py batch 4; chr_oleona_ = Orochi Leona) ------------------
+0047fa  player_build_palettes | build a player's 16 palettes (character, Orochi version, colour) into its palette buffer
+004ed8  palette_queue_faded_list | D1 = ROM palette, D2 = first slot, D3 = count-1: queue faded palettes, end with 0xffff
+004f04  palette_queue_faded_entry | one ROM palette into the palette queue minus the fade RGB offsets, clamped
+004fea  palette_buffer_faded_list | D3+1 ROM palettes into a buffer, faded (palette_buffer_faded_entry)
+005008  palette_buffer_faded_entry | copy one ROM palette to buffer A1 minus the fade RGB offsets, clamped
+00560a  palette_fade_obj     | object: unpack a fade, then palette_fade_step every few frames until done; then 0x278a bit 2
+0059b8  obj_anim_cmd_spawn_effect | animation command 0xfa: spawn an effect object (setup / handler tables 0x2adf6 / 0x2aac6)
+005a3e  obj_anim_lookup_script | A0 = animation script for +0x70 anim / +0x72 variant (+0x74 offset); +0x3c from bank-1 table 0x250000
+007170  fix_put_tile_2x2     | D0 = (fix address << 16) | tile: 2 x 2 block
+0071a8  fix_put_tile_2x4     | D0 = (fix address << 16) | tile: 2 columns x 4 rows block (round timer digits)
+0079d2  bg_layer_draw_static | write a layer tile map straight to sprite VRAM (no scroll or wrap), up to 32 x 32
+008502  bg_layer_map_locate  | A0 = layer tile-map entry for world X (D1) / Y (D2), wrapped by the map size (+0x7a / +0x7c)
+0094ac  hud_draw_credits     | draw the credit counts for both sides on the fix layer
+009504  hud_draw_credit_count | CREDIT(S) text and 2 BCD digits from (A1); D2 high word = fix VRAM address
+00956e  player_start_main    | PLAYER_START: latch BIOS_START_FLAG, route to a new game, a continue or a join-in
+009608  player_start_new_game | PLAYER_START from title/demo: clear flags, sounds, SCENE_HANDLER = game start (0xe9f0)
+00b06a  ranking_chars_record_team | count the three members of a side's team in the character usage table
+00b0ba  ranking_chars_count_use | count one use of character D0 in the backup-RAM usage counters, keep the top-10 sorted
+00bbd4  ranking_setup_palettes | ranking scene setup: layer values, palette sets, one palette per character
+00d18a  attract_intro_title_letters_spawn | intro: spawn the THE KING OF FIGHTERS '97 title letters, wait, next step
+00dbf8  attract_intro_ember_delayed | intro ember sprite: wait, then drift left and fade
+00e542  picture_obj_main     | static picture object from a tile map (bg_layer_init); hidden once by 0x5d0 bit 2
+00e5ce  picture_obj_flip_main | as picture_obj_main, mirrored when +0x31 is set; hidden once by 0x5d0 bit 1
+00e776  attract_intro_spawn_pictures | intro: spawn two picture objects (static slots 1 and 3)
+00e964  new_game_reset_state | new game: clear scroll and select state, default teams, LSP_1ST, palettes
+010610  player_guard_crouch_hold_back | crouching guard, down-back still held: stay in the crouching guard
+01501c  player_state_dizzy   | dizzy (stun) state: stars, timer shortened by input presses, stun gauge refilled
+015aea  hud_hit_message_spawn | spawn the big side text object (GUARD CRUSH!! / COUNTER!! / CRITICAL HIT!! / COUNTER CRITICAL!!)
+015b14  hud_hit_message_main | side text object: message by +0xd2; show, flash, hold, then scroll out
+0160a8  player_hit_store_attacker_info | victim copies hit info from the attacker (+0xb2): direction, hit class, strength
+017524  player_hit_knockdown_blowaway_short | hit reaction 0x36: shorter blowaway with one bounce, lie down, get up
+01ed68  player_grab_link_from_opponent_frame | grab: position/anim offsets for A4 from the opponent's current frame (table +0xc2)
+01edf4  player_grab_link_from_own_frame | grab: the same lookup driven by A4's own frame (the grabber drives the victim)
+01ee8a  player_grab_wall_push_opponent_frame | grab led by the opponent's frame: at the stage edge, move the opponent in and relink
+01ef80  player_grab_wall_push_own_frame | grab led by A4's own frame: the same stage-edge correction
+0221e6  order_select_setup_cpu_match_p1 | order_select_end, P1 vs CPU: pick the next stage, copy the CPU team
+023bae  select_logo_piece_move_to_target | step toward (+0xc2,+0xc4) at speed +0xc6; D0 = -1 while far, 0 on arrival
+028a9c  hud_power_up_text_draw | ADVANCED MAX start: draw POWER UP! on row 25, palette flashing every 4 frames
+028c96  hud_pow_gauge_draw_frame | power gauge frame and label tiles (rows 27-28), flash and charging palettes
+028d52  hud_pow_gauge_draw_bar | power gauge fill tiles from the power value; animated edge while charging
+028ea0  hud_pow_gauge_extra_max_open | EXTRA mode gauge state 1: reveal the MAX plate one column per frame
+029ff4  hud_team_icons_setup | team icon object: member order (defeated last), then hud_team_icons_load_palettes
+02a000  hud_team_icons_load_palettes | queue the palettes of the two waiting members' icons
+02a158  hud_team_icon_attr   | fix tile attribute for a team icon: palette per slot, tile page by character
+02a2d6  team_sideline_member_init | waiting team member object: pose (defeated pose if out), palette, hit callbacks, then react
+02a8f0  player_shadow_init   | fighter's shadow object (vertically flipped, squashed)
+02a942  player_shadow_main   | shadow: copy the parent's sprite every other frame unless the parent is airborne
+0343f6  chr_daimon_hcf_p_grab_hit | Daimon hcf+P reaching grab, attacker step after it connects (+0x19c): hold and throw over
+034438  chr_daimon_hcf_p_grab_victim | victim side (+0x1a0) of Daimon's hcf+P grab: thrown in an arc, land, bounce, lie down
+03641a  chr_terry_dash_punch | Terry qcb+P: lunging punch with a small hop and a fist effect
+0365f6  chr_terry_ground_wave | Terry qcf+P: ground wave child (speed by A/C); Terry stays in place
+03676a  chr_terry_ground_wave_resume | ground wave callback (+0x19c/+0x1a0): restore the handler saved in +0x120
+03a94a  chr_ryo_close_grab   | Ryo throw 0x55, thrower: one grab animation
+03a9be  chr_ryo_grab_victim_resume | victim side of Ryo's throw 0x55: resume the handler saved in +0x120
+03e3fc  chr_yuri_dm_big_fireball | Yuri desperation move: DM cost check, then chr_yuri_dm_big_fireball_main
+03e40a  chr_yuri_dm_big_fireball_main | Yuri desperation move: large projectile with durability (MAX: stronger)
+043c78  chr_clark_dm_run_grab_k | Clark kick desperation move: DM cost check, then chr_clark_dm_run_grab_k_main
+043c86  chr_clark_dm_run_grab_k_main | Clark: run forward and, when close, try the desperation grab (throw 0x62)
+04517c  chr_athena_hcf_c_throw | Athena command throw (throw 0x5a, hcf+C), thrower
+0451e2  chr_athena_hcf_c_throw_victim | victim of Athena's command throw: thrown in an arc, land, bounce, lie down / get up
+0473c6  chr_kensou_hcf_c_lunge | Kensou hcf+C: fast low leap, glide with weak gravity, land
+048e54  chr_chin_qcb_k_stance | Chin qcb+K: stance for a while, drifting with the joystick; follow-up inputs branch out
+04c566  chr_mai_dm_leap_dive | Mai desperation move: DM cost check, then chr_mai_dm_leap_dive_main
+04c574  chr_mai_dm_leap_dive_main | Mai desperation move: jump high, then dive at an angle with a fire child (A/C pick the angle)
+04d6c2  chr_king_dp_p_leap_dive | King dp+P: leap up, then dive diagonally down (angle by strength)
+04fa3e  chr_chang_chg_bf_c_rush | Chang charge back, forward + C: body rush forward with friction
+04ffbc  chr_chang_hcf_c_grab | Chang command throw (throw 0x5d, hcf+C), thrower: hold through five animation steps
+05003e  chr_chang_hcf_c_grab_victim | victim of Chang's command throw: held, thrown, bounce, lie down
+05572c  chr_shermie_qcb_k_hop | Shermie (and Orochi Shermie) qcb+K: forward hopping attack, B/D pick speed and height
+058bba  chr_chris_dm_hop_dive | Chris (and Orochi Chris) desperation move: DM cost check, then chr_chris_dm_hop_dive_main
+058bc8  chr_chris_dm_hop_dive_main | Chris desperation move: hop, flaming steep dive; MAX rebounds for a second dive
+05cedc  chr_mary_dm_qcf2_k_grab | Mary qcf2+K desperation grab (throw 0x75), thrower: hold, hit children, MAX hit loop, hop and land
+05d258  chr_mary_dm_qcf2_k_grab_victim | victim side of Mary's desperation grab: held, repeated hits in MAX, then launched
+064042  chr_oleona_dm_leap_grab | Orochi Leona desperation move: leaping grab (attacker step 0x642cc, victim 0x64408)
+064408  chr_oleona_dm_grab_victim | victim side (+0x1a0) of Orochi Leona's leaping desperation grab
+064442  chr_oleona_qcb_p     | Orochi Leona qcb+P: step in, throw the ring, wait for it to return (A/C pick the speed)
+0645d0  chr_oleona_qcb_p_ring | Orochi Leona's ring: fly forward, loop in an arc, home back to her, then delete
+06a4a2  stage_chicken_startled | stage chicken, state 4 (impact trigger): pick 1-2 hops, then hop away
+06ab6c  stage_lion_dance_step1_init | lion dance step 1 init (table D_0ad59e[1])
+06afc0  stage_firecracker_spawn_burst | lion-dance stage: one firecracker burst at a random place in the camera region
+06d5aa  stage_palette_anim   | stage palette animation object: palette sets per step (stops while 0x6d00 is set)
+06d5da  stage_palette_anim_load | (inside stage_palette_anim) load this step's palette set, wait the step time, next step
+06e812  fix_print_bcd8_big   | A0 = 4-byte BCD, D2/D3 = column/row: 8 digits in the 16x16 font, leading zeros blank
+071b96  howto_extra_maximum_gauge | how-to-play, EXTRA mode: the MAXIMUM power gauge slides in with palette cycling
+072bb0  nextstage_info_spawn_no | NEXT STAGE info: the NO. sprite of the stage title
+072c68  nextstage_info_spawn_stage_number | NEXT STAGE info: the 2-digit stage number
+072d5a  nextstage_info_spawn_stage_name | NEXT STAGE info: the stage name sprite
+072ede  nextstage_info_spawn_time | NEXT STAGE info: the TIME value (clock and A.M./P.M.)
+072f90  nextstage_info_spawn_attendance | NEXT STAGE info: the ATTENDANCE figure by rank
+073012  nextstage_attendance_rank | D1 = attendance rank 0-7 from the popularity of both sides' selected characters
+073258  nextstage_globe_main | FIRST/NEXT STAGE globe body (the other layers follow it): fly in, wait, fly out to the bottom right
+07374c  nextstage_globe_spin | globe layer: turn its animation to the stage's frame
+073890  nextstage_globe_ring | globe ring layer: set to the stage's frame; closes around the globe on exit
+073972  nextstage_globe_ring_to_medal | (state of nextstage_globe_ring) after the second ring's exit: the KOF medal rim
+0743aa  continue_title_init  | continue screen: the CONTINUE title object
+0743be  continue_title_spawn_letters | (after continue_title_init's delay) spawn the eight CONTINUE letters, then the whole title
+0744e0  continue_title_letter | one CONTINUE letter: delay, slide to its slot, shake and flash, tell the parent
+0749da  gameover_tv_off      | game over: shrink the screen like a TV switching off
+074bb2  gameover_tv_noise    | game over: static noise panel
+074bc2  gameover_tv_noise_blink | (after gameover_tv_noise's delay) blink the noise panel, sounds, remove the CONTINUE title, fade out
+076a38  midgame_interlude_scene_init | between matches (0x286f8 = 3): interlude scene (stage photos, world map, globe, bracket)
+076b74  midgame_interlude_main | interlude object: photo phase, then the globe phase
+076c10  midgame_interlude_photos_done | (state of midgame_interlude_main) photos done: start the globe phase
+0a0008  poutput_queue_number | REG_POUTPUT comm block: queue a 2-digit BCD number for channel D1
+
+# ---- throws, hit results and effects, DM check, join-in, challenger, story scenes, endings, message box,
+# ---- stage camera and per-stage objects, comm board init, character moves (namecov.py batch 5; chr_oiori_ = Orochi Iori)
+001ad6  hud_continue_countdown | CONTINUE? n on the fix layer for an idle side; at 0 hud_continue_game_over
+001b54  hud_continue_game_over | continue countdown expired: side out, GAME OVER text for a while, then clear
+002b24  score_initials_entry_start | initials entry for one side: position, score, timer, then letter input (3 letters)
+003c02  player_throw_try_grab | throw box vs opponent body box; on success link both players, D0 = -1, else 0
+004c7a  palette_queue_buffer_brightness | A0 = RAM palette list: queue each darkened by (A5+0x592c)/2 per component
+005520  palette_fade_pulse_obj | object: fade between two palette sets back and forth until 0x278a bit 5
+0057ea  palette_rotate_obj   | object: rotate colours 11-15 of a ROM palette into a slot every few frames
+009b6a  demo_end_main        | DEMO_END header handler: on MVS clear palettes and backdrop
+00c468  attract_intro_step_billy | intro movie step (Billy shot): red backdrop, colour flashes
+00ce0a  attract_intro_step_yashiro | intro movie step (Yashiro shot): background maps
+00d5f0  attract_intro_title_text | intro: THE KING OF FIGHTERS text object
+00d618  attract_intro_title_text_wait | (state of attract_intro_title_text) wait, spawn the '97 sprite, fade the text
+00fabe  player_jump_rise_step | jump, stick not held back: move, gravity; at the apex the fall animation and fall state
+013086  player_hit_reaction_fx | hit-reaction callback (+0x36): burn emitter by element, afterimage, hit slowdown
+0131bc  hit_spark_particle_init | spark debris: random angle, fly a few frames, delete
+01329a  hit_burn_emitter_main | on a burning victim while +0x1d7 is set: spawn flame particles every few frames
+013330  hit_burn_flame_init  | flame particle on a burning victim: random offset, play the animation, delete
+015ebe  player_hit_set_result | D0 = dizzy, D1 = KO: set +0x12d (0 normal, 1 dizzy, 2 KO); KO effects
+016040  player_hit_classify_reaction | set the reaction class +0x12e from the outcome and posture
+018628  player_hit_reaction_lock | hit reaction 0x50: locked multi-hit (desperation move), shake, run the attacker's victim handler
+018a90  player_check_breakfall | on landing: down + button = break-fall (else D0 = 0)
+01e35a  player_normal_attack_start | start a command normal attack (instead of player_special_start)
+01e366  player_throw_start   | start a throw
+01e778  player_dm_check_power | desperation move availability: D0 = 0 no, 1 no (CPU fallback), 2 DM, 3 MAX DM (consumes a stock)
+01e8a8  player_count_button_presses | count button presses into +0x32 (throw mashing)
+01e8b6  player_throw_mash_adjust | change the throw hold count by the difference in button presses
+01ec9a  player_grab_victim_follow | grab victim per frame: follow the grabber's frame, apply flagged damage; D0 = 1 on a new frame
+01f9d0  select_team_begin_wait | team select: wait for the logo, then select_team_begin
+01f9d8  select_team_begin    | team select: timer frame, 20-second countdown, both select_side_init controllers
+0222a8  order_select_setup_cpu_match_p2 | order_select_end, P2 vs CPU: pick the next stage, copy the CPU team
+022d68  challenger_join_at_select | a player joins during team select: reset that side, restart team select
+022e56  challenger_join_mid_game | a player joins outside team select: reset, then the HERE COMES CHALLENGER scene
+025c0c  intro_emblem_slider  | pre-fight emblem sliding piece: wait, slide right, tell the parent
+0260a6  player_intro_rival_check | round start: special intro against a rival character, else neutral state
+027bee  round_perfect_text_main | PERFECT sprite: follows the parent's flash, waits, fades out
+02b8be  effect_dm_flash_rings | desperation move flash rings behind the spawner, palette cycling child
+02c422  chr_chang_win_chain_piece_a | Chang's win pose: chain fragment thrown forward (0x2c440: backward piece)
+032168  chr_kyo_throw_d      | Kyo D throw (index 2), thrower: turns around, throws behind
+0321e8  chr_kyo_throw_d_victim | victim of Kyo's D throw
+032914  chr_benimaru_qcb_p_hop | Benimaru qcb+P: hop forward-up with an attack, land (heavy = farther)
+033e46  chr_benimaru_fwd_b_hop | Benimaru forward+B command attack: small hop forward with a kick
+03447a  player_thrown_arc_tail_b | shared thrown-arc victim tail (used by several throws)
+035ac4  chr_daimon_throw_hold | Daimon close C throw (index 6), thrower: repeated blows (count changed by button mashing)
+035b9a  chr_daimon_throw_hold_victim | victim of Daimon's close C throw: held through the blows, then thrown into an arc
+035c9a  player_thrown_arc_tail_a | shared thrown-arc victim tail (used by several throws)
+035e26  chr_daimon_throw_c_far_victim | victim of Daimon's far C throw (index 7)
+035e62  chr_daimon_throw_c_far_victim_hold | far C throw victim: linked to the thrower's frames, flipped, then the thrown arc
+035e8c  chr_daimon_throw_d   | Daimon D throw (index 8), thrower: turns around and throws the victim high behind him
+035f0c  chr_daimon_throw_d_victim | victim of Daimon's D throw
+035f48  chr_daimon_throw_d_victim_hold | D throw victim: per-frame link state
+03601c  chr_daimon_throw_d_victim_land | D throw victim landing without a break-fall: bounce, lie down, get up
+0366fe  chr_terry_ground_wave_child | Terry ground wave object: moves with its speed until the animation ends or off-screen
+037366  chr_terry_throw_d    | Terry D throw (index 0x0a), thrower: turns around
+0373e6  chr_terry_throw_d_victim | victim of Terry's D throw
+0374b8  chr_terry_df_c_attack | Terry down-forward+C command attack, ends crouching
+0378e6  chr_andy_qcb_p_projectile | Andy qcb+P projectile: A fires in place, C dashes first
+037988  chr_andy_qcb_p_projectile_dash | Andy qcb+P, C version: dash forward, then fire
+03875e  chr_andy_throw_d     | Andy D throw (index 0x0c), thrower: turns around mid-throw
+0387de  chr_andy_throw_d_victim | victim of Andy's D throw
+03881a  chr_andy_throw_d_victim_hold | Andy D throw victim: linked, then flung behind him
+0388de  chr_andy_throw_d_victim_land | Andy D throw victim landing without a break-fall
+03e9ec  chr_yuri_throw_d_leap | Yuri D throw (index 0x14): hold the victim, release, leap forward, land, turn around
+03ea5a  chr_yuri_throw_d_leap_hold | (inside chr_yuri_throw_d_leap) per-frame hold state
+0423b6  chr_ralf_throw_c     | Ralf C throw (index 0x19), thrower
+04242e  chr_ralf_throw_c_victim | victim of Ralf's C throw
+042468  chr_ralf_throw_c_victim_hold | Ralf C throw victim: linked for 32 frames, then flung
+042488  player_throw_victim_fling | shared throw victim tail: flung with decaying vx; break-fall check on landing
+04256a  player_throw_victim_fling_land | thrown victim landing without a break-fall: bounce, lie down, get up
+049f82  chr_chizuru_dp_c_phantom | Chizuru dp+P C version: phantom that flies the arc and gives the parent its warp target
+056aa0  chr_oshermie_dm_blast | Orochi Shermie desperation move (non-MAX): hit child that loops its animation, then ends
+057ea2  chr_chris_flame_grab | Chris command grab (throw 0x6c): flame hit children on animation events
+05b5dc  chr_yamazaki_throw_d | Yamazaki D throw (index 0x37), thrower: turns around
+05b65c  chr_yamazaki_throw_d_victim | victim of Yamazaki's D throw
+05b692  chr_yamazaki_throw_d_victim_hold | Yamazaki D throw victim: slides along the floor behind him, lie down, get up
+05de36  chr_mary_df_b_attack | Mary down-forward+B command attack, ends crouching
+060c36  chr_iori_fwd_a_double | Iori forward+A command attack: second hit when A is pressed again in the cancel window
+0617e4  chr_oiori_grab       | Orochi Iori command grab (throw 0x6d): grab with a turn-around, follow-through
+061866  chr_oiori_grab_victim | victim of Orochi Iori's grab: slammed, slides along the ground, lie down
+066e74  camera_edge_push_step | drain the camera edge-push accumulators (8 px per frame); D7 = net X step
+066eda  stage_camera_main    | stage camera object: X/Y (0x3082/0x3092) and layer shrink
+06708c  stage_concert_setup  | stage 0 (concert arena) init: camera limits, palettes, static layers
+06718e  stage_concert_bg_spawn | stage 0 main layer: spawn the stage list and two backdrop light objects
+067246  stage_concert_lights_start | stage 0 light show after the fight starts: palette program per round, flash on impact
+0672c2  stage_concert_lights_wait | stage 0 light: wait the start delay or an impact, then run its palette program
+0677e6  stage_usa_far_layer_init | stage 1 far layer; another map (aircraft instead of the rocket) when an Ikari member fights
+0679de  stage_usa_confetti_spawn | stage 1: spawn a confetti piece above the view
+067a68  stage_usa_confetti_init | confetti piece: animation, fall speed and flutter type
+067afc  stage_usa_confetti_fall | confetti piece: flutter and fall, delete outside the view
+0684ae  stage_circuit_bg_figure_react | stage 5 background figure on an impact: reaction animation, sound, effects
+06907a  stage_orochiteam_sky_flash | storm stage: sky palette sequencer that starts the distant bolts
+0690f8  stage_orochiteam_sky_bolt_a | storm stage: distant sky lightning (low nibble trigger)
+06919e  stage_orochiteam_sky_bolt_b | storm stage: distant sky lightning (high nibble trigger)
+069562  stage_orochiteam_lava_palette_cycle | lava stage: palette cycling, faster when time is short
+069fde  stage_empty_intro_script | intro script on the empty-stage variant (round 1)
+06a154  stage_blackout_fade_start | empty-stage intro: palette faders, wait, sound and music
+06a2b4  stage_spawn_list     | spawn the stage's background object list (D_0aceb0 by stage)
+06a2d4  stage_spawn_list_orochiteam | spawn the Orochi team stage variant list (D_0ad04c)
+06a2f4  stage_spawn_children | spawn a child object list
+06a352  stage_spawn_entry    | A3 = spawn-list entry, D0 = handler: spawn, layer flags, position, parameters
+06b754  stage_korea_impact_trio | stage 4 on an impact: three one-shot sprites at different scales, sound
+06c8ee  stage_orochiteam_lava_pit_init | lava stage centre pit: waits for Yashiro's entrance
+06c910  stage_orochiteam_lava_pit_erupt | lava pit: eruption when Yashiro enters, then bubbling
+06d352  stage_orochi_spirit_flame_init_a | Orochi altar spirit flame (variant 0)
+06d366  stage_orochi_spirit_flame_init_b | Orochi altar spirit flame (variant 1)
+06d37c  stage_orochi_spirit_flame_init_c | Orochi altar spirit flame (variant 2)
+06d38e  stage_orochi_spirit_flame_round_check | spirit flames exist in round 2 only
+06d39c  stage_orochi_spirit_flame_wait_ko | spirit flame: wait for a KO, then rise with afterimages
+06d4ea  stage_usa_impact_puff | stage 1 impact effect: puff at a random place, sound
+06e44a  winscreen_init       | team win screen
+06e458  winscreen_setup      | team win screen setup state
+06e4cc  winscreen_spawn_member_portraits | win screen setup tail: the other members' portraits (when A5+0x2846 bit 0)
+06f192  winscreen_bonus_skip_check | win screen tally: a button press adds all bonuses at once
+06f1cc  winscreen_bonus_add_all | add all four bonus counters to the score at once (BCD, capped), clear them
+070144  challenger_scene_init | HERE COMES CHALLENGER scene (a second player joins)
+0704b4  challenger_bg_init   | challenger screen, static object 0: backdrop
+070500  challenger_text_lower_init | challenger screen, static object 1: text line sliding in from the right, shake
+070672  challenger_text_upper_init | challenger screen, static object 2: text line sliding in from the left
+070b8c  howto_scene_init     | how-to-play scene
+0710b8  howto_display_setup  | how-to-play: sprite VRAM windows, palettes, backdrop
+072520  nextstage_scene_load_palettes | (state of the NEXT STAGE scene) palette sets, background layers, then nextstage_spawn_sprites
+072b36  nextstage_info_spawn_all | NEXT STAGE info: run all info spawners, spawn the stage photo
+072df2  nextstage_info_spawn_labels | NEXT STAGE info: the TIME / ATTENDANCE / PLACE labels
+072e68  nextstage_info_spawn_place_name | NEXT STAGE info: the place name
+0731be  nextstage_stage_photo_shadow | stage photo drop shadow: follows the photo, then moves to its offset
+078e1e  story_scene6_init    | story scene 6 (post-match dispatcher case 6)
+07916e  story_scene6_display_setup | story scene 6: sprite VRAM windows, clear display state, music
+07a80e  story_scene7_display_setup | story scene 7: sprite VRAM windows, clear display state, sounds, music
+07a8d6  story_scene7_init    | story scene 7 (post-match dispatcher case 7)
+07bca4  story_script_select_for_team | A1 = per-team script table: pick by the human side's team code, store script and members
+07c336  story_script_step    | story scene script stepper: positive words spawn the dialogue box
+07c3d4  story_dialogue_box_init | story scene dialogue box
+07c426  story_dialogue_box_type | story dialogue box: layout by language, type the message, tell the parent, hide
+080108  cutscene_msgbox_spawn | cutscene step: message box object in static slot 2 (owner A4)
+080198  cutscene_msgbox_spawn_b | as cutscene_msgbox_spawn with another message table setting
+081b5c  ending_fatalfury_step0 | Fatal Fury team ending, first step: sounds, background, sprites, message
+082c04  ending_aof_step0     | Art of Fighting team ending, first step: sounds, background, sprites, message
+087116  msgbox_init          | message box object (static slot 2 of cutscene / ending / how-to-play steps)
+087152  msgbox_type_main     | message box: language layout, look up the message, type it, wait, then 0x5d0 bit 0
+0a013c  poutput_detect_ext_board | Z = external board signature "-SNK STG SYSTEM-" at 0xc20010
+0a0282  poutput_init         | REG_POUTPUT comm block: use the external board's ROM if present, else init the block in work RAM
+0a02b2  poutput_init_block   | (inside poutput_init) A0 = block in work RAM: store, clear, magic 0x5643
+0a061e  poutput_timer_start  | REG_POUTPUT comm block: command for channel D1 and a timer that sets the channel's bit 2
+
+# ---- command recognition: motion recognizer, motion records and lists, check slots (+0x194: throw / air throw /
+# ---- special check), command-normal tests, per-character check routines (decoded statically, checked at runtime)
+0116d6  player_check_run_backstep_sjump | motion bits input +4: bit 0 run (D0=1), bit 2 backstep (D0=2), bit 4 super jump (D0=3, unless +0x1d5)
+01222a  player_load_motion_lists | from CHR_MOTION_LISTS[(+0x186 = id*16) + 8*(+0x1d6 Orochi flag)]: P1 lists -> A5+0x675e/0x6762, P2 -> A5+0x6766/0x676a
+0128a4  motion_update_p1     | P1 command recognizer: pick the facing-left/right motion list (A5+0x675e/0x6762 by x vs opponent, facing bit on a tie), A1 = 0x10da48, A2 = chr_data+0x2e, A3 = input block, call motion_recognize
+0128dc  motion_update_p2     | P2 counterpart (lists A5+0x6766/0x676a, input 0x10da5c, history 0x10e9a8)
+012914  motion_recognize     | shift the 60-byte input history (chr_data+0x2e..+0x69), track last direction/hold time (+0x6a/+0x6c), then test every motion record of list A0 and set input +4+n/4 bit 2*(n%4) for each match
+0129dc  MOTION_STEP_LAST_TABLE | jump table by step type (0..0x28 step 4) for the record's last step, tested against the newest history frame only (mismatch = no motion)
+012a14  MOTION_STEP_TABLE    | jump table by step type for the earlier steps, searched backwards through the history window (mismatch = try the next older frame)
+012a40  motion_matched       | (inside motion_recognize) motion n matched: bset bit 2*(n&3) of (A1 + n>>2), store the completing input byte (A5+0x6bb8) to chr_data+0x6f+2n
+012a7a  motion_step_eq       | earlier-step type 0x00: frame byte == value
+012a86  motion_step_any      | type 0x04: frame & value != 0
+012a92  motion_step_btn_eq   | type 0x08: buttons == value (0 = no button held)
+012aa2  motion_step_charge   | step type 0x0c: last direction == value held >= record word frames -> reload chr_data+0x6e+2n with the window; while that counter > 0 the charge counts as satisfied
+012ace  motion_step_charge_any | step type 0x10: as motion_step_charge with direction mask (any common bit)
+012afe  motion_step_dir_eq   | type 0x14: direction == value
+012b14  motion_step_nobtn_dir_any | type 0x18: no button and direction & value
+012b30  motion_step_nodir_btn_any | type 0x1c: no direction and buttons & value
+012b4c  motion_step_dir_any_btn_any | type 0x20
+012b88  motion_step_dir_eq_btn_any | type 0x24
+012bc4  motion_step_nobtn_dir_eq | type 0x28
+012be4  motion_last_eq       | last-step type 0x00: frame byte == value
+012bfa  motion_last_any      | type 0x04: frame & value != 0
+012c12  motion_last_btn_eq   | type 0x08: buttons == value
+012c2e  motion_last_dir_eq   | type 0x14: direction nibble == value
+012c4a  motion_last_nobtn_dir_any | type 0x18 (buggy: ANDs a zeroed register, never matches; unused as a last step)
+012c6a  motion_last_nodir_btn_any | type 0x1c (same bug, unused)
+012c8a  motion_last_dir_any_btn_any | type 0x20: direction & value.dir and buttons & value.btn
+012cca  motion_last_dir_eq_btn_any | type 0x24: direction == value.dir and buttons & value.btn
+012d0a  motion_last_nobtn_dir_eq | type 0x28: no buttons and direction == value
+019558  player_set_check_slots | A0 = slot block (+0x194 points here: 0x10ebc4 P1 / 0x10ebd0 P2), D0 = char id: slot 0 = CHR_THROW_CHECKS, +4 = CHR_AIR_THROW_CHECKS, +8 = CHR_SPECIAL_CHECKS
+0195e4  player_state_cmd_throw | next_state of every command throw/grab DM (after throw_record_load + player_throw_try_grab succeed)
+0199b4  throw_record_load    | A0 = 6-byte throw record: +0x192 = throw index, +0x188 = input (A5+0x6bdc), +0x189..+0x18c = record bytes 2-5
+0199d2  input_check_false    | D0 = 0 (helpers below)
+0199d6  input_check_true     | D0 = 1
+0199fc  throw_input_check    | ground throw: back or forward held, button bit D0 (6 = C, 7 = D) pressed, opponent on the ground -> D0 = 1, A5+0x6bdc = input
+019a1e  air_throw_input_check | air throw: no up, some down/back/forward, button mask D0 pressed, opponent airborne
+019a7a  cmd_d_c              | down held + C pressed (Kyo air d+C etc.)
+019a90  cmd_df_d             | exactly down-forward (by side) + D pressed
+019ac2  cmd_df_c             | down-forward + C
+019af4  cmd_f_d              | forward + D
+019b26  cmd_d_d              | down held + D
+019b4a  cmd_u_b              | up held + B
+019b60  cmd_u_d              | up held + D
+019b76  cmd_abcd             | input +8 == 0xf0: A+B+C+D pressed within the press window
+019b84  cmd_any_dir_btn      | any button pressed while holding any valid (non-neutral) direction (table D_019ba4)
+019bb4  cmd_f_p              | forward + A or C
+019be8  cmd_f_k              | forward + B or D
+019c1c  cmd_f_b              | forward + B
+019c4e  cmd_f_a              | forward + A
+019c80  cmd_b_b              | back + B
+019cb2  cmd_d_b              | down held + B
+019cc8  cmd_df_b             | down-forward + B
+019cfa  cmd_df_a             | down-forward + A
+019d2c  CHR_THROW_CHECKS     | char id -> word offset (from here) of chr_<name>_check_throw (slot +0)
+019d6c  CHR_AIR_THROW_CHECKS | char id -> offset of chr_<name>_check_air_throw (slot +4)
+019dac  CHR_SPECIAL_CHECKS   | char id -> offset of chr_<name>_check_specials (slot +8)
+019dec  check_result_none    | D0 = 0
+019df0  check_result_special | D0 = 1: +0x198 holds a special/DM state (player_special_start)
+019df4  check_result_normal  | D0 = 2: +0x198 holds a command normal (player_normal_attack_start)
+019df8  chr_kyo_check_throw  | kyo ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+019e3a  chr_kyo_check_air_throw  | kyo air throw check (slot +4, D_019d6c): none, D0 = 0
+019e3c  chr_kyo_check_specials  | kyo special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+019fd4  chr_kyo_check_specials_alt | Kyo's check with +0x1d6 set (alternate move set: qcf+P 0x31b30, dp+P 0x31eba, rdp+K 0x31d12); probably unreachable
+01a09e  chr_benimaru_check_throw  | benimaru ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01a0e2  chr_benimaru_check_air_throw  | benimaru air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01a106  chr_benimaru_check_specials  | benimaru special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01a2e2  chr_daimon_check_throw  | daimon ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01a33c  chr_daimon_check_air_throw  | daimon air throw check (slot +4, D_019d6c): none, D0 = 0
+01a340  chr_daimon_check_specials  | daimon special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01a546  chr_terry_check_throw  | terry ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01a58a  chr_terry_check_air_throw  | terry air throw check (slot +4, D_019d6c): none, D0 = 0
+01a58e  chr_terry_check_specials  | terry special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01a6d0  chr_andy_check_throw  | andy ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01a714  chr_andy_check_air_throw  | andy air throw check (slot +4, D_019d6c): none, D0 = 0
+01a718  chr_andy_check_specials  | andy special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01a890  chr_joe_check_throw  | joe ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01a8d4  chr_joe_check_air_throw  | joe air throw check (slot +4, D_019d6c): none, D0 = 0
+01a8d8  chr_joe_check_specials  | joe special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01aa10  chr_ryo_check_throw  | ryo ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01aa54  chr_ryo_check_air_throw  | ryo air throw check (slot +4, D_019d6c): none, D0 = 0
+01aa58  chr_ryo_check_specials  | ryo special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01ac02  chr_robert_check_throw  | robert ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01ac46  chr_robert_check_air_throw  | robert air throw check (slot +4, D_019d6c): none, D0 = 0
+01ac4a  chr_robert_check_specials  | robert special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01adf4  chr_yuri_check_throw  | yuri ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01ae38  chr_yuri_check_air_throw  | yuri air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01ae5c  chr_yuri_check_specials  | yuri special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01afbe  chr_leona_check_throw  | leona ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01b002  chr_leona_check_air_throw  | leona air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01b026  chr_leona_check_specials  | leona special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01b170  chr_ralf_check_throw  | ralf ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01b1b4  chr_ralf_check_air_throw  | ralf air throw check (slot +4, D_019d6c): none, D0 = 0
+01b1b8  chr_ralf_check_specials  | ralf special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01b338  chr_clark_check_throw  | clark ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01b37c  chr_clark_check_air_throw  | clark air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01b4e6  chr_athena_check_throw  | athena ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01b52a  chr_athena_check_air_throw  | athena air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01b54e  chr_athena_check_specials  | athena special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01b754  chr_kensou_check_throw  | kensou ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01b798  chr_kensou_check_air_throw  | kensou air throw check (slot +4, D_019d6c): none, D0 = 0
+01b79c  chr_kensou_check_specials  | kensou special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01b996  chr_chin_check_throw  | chin ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01b9da  chr_chin_check_air_throw  | chin air throw check (slot +4, D_019d6c): none, D0 = 0
+01b9de  chr_chin_check_specials  | chin special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01bb04  chr_chizuru_check_throw  | chizuru ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01bb48  chr_chizuru_check_air_throw  | chizuru air throw check (slot +4, D_019d6c): none, D0 = 0
+01bb4c  chr_chizuru_check_specials  | chizuru special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01bc52  chr_mai_check_throw  | mai ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01bc96  chr_mai_check_air_throw  | mai air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01bcba  chr_mai_check_specials  | mai special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01be72  chr_king_check_throw  | king ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01beba  chr_king_check_air_throw  | king air throw check (slot +4, D_019d6c): none, D0 = 0
+01bebe  chr_king_check_specials  | king special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01c024  chr_kim_check_throw  | kim ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01c068  chr_kim_check_air_throw  | kim air throw check (slot +4, D_019d6c): none, D0 = 0
+01c06c  chr_kim_check_specials  | kim special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01c1d4  chr_chang_check_throw  | chang ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01c218  chr_chang_check_air_throw  | chang air throw check (slot +4, D_019d6c): none, D0 = 0
+01c21c  chr_chang_check_specials  | chang special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01c366  chr_choi_check_throw  | choi ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01c3aa  chr_choi_check_air_throw  | choi air throw check (slot +4, D_019d6c): none, D0 = 0
+01c3ae  chr_choi_check_specials  | choi special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01c4cc  chr_yashiro_check_throw  | yashiro ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01c510  chr_yashiro_check_air_throw  | yashiro air throw check (slot +4, D_019d6c): none, D0 = 0
+01c514  chr_yashiro_check_specials  | yashiro special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01c646  chr_yashiro_check_specials_cpu | CPU-controlled (+0x170 < 0) Yashiro: motion bits come from the AI, own bit layout, extra grabs (throw 0x84/0x85)
+01c7b2  chr_oyashiro_check_specials | Orochi Yashiro branch of chr_yashiro_check_specials (+0x1d6 set)
+01c96a  chr_shermie_check_throw  | shermie ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01c9ae  chr_shermie_check_air_throw  | shermie air throw check (slot +4, D_019d6c): none, D0 = 0
+01c9b2  chr_shermie_check_specials  | shermie special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01cb30  chr_shermie_check_specials_cpu | CPU Shermie branch
+01cbfe  chr_oshermie_check_specials | Orochi Shermie branch
+01ccfe  chr_chris_check_throw  | chris ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01cd42  chr_chris_check_air_throw  | chris air throw check (slot +4, D_019d6c): none, D0 = 0
+01cd46  chr_chris_check_specials  | chris special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01ce6c  chr_chris_check_specials_cpu | CPU Chris branch (throw 0x86 on cpu bit 6.0)
+01cfa2  chr_ochris_check_specials | Orochi Chris branch
+01d0ee  chr_yamazaki_check_throw  | yamazaki ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01d132  chr_yamazaki_check_air_throw  | yamazaki air throw check (slot +4, D_019d6c): none, D0 = 0
+01d136  chr_yamazaki_check_specials  | yamazaki special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01d2b0  chr_mary_check_throw  | mary ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01d2f4  chr_mary_check_air_throw  | mary air throw check (slot +4, D_019d6c): none, D0 = 0
+01d4e0  chr_billy_check_throw  | billy ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01d524  chr_billy_check_air_throw  | billy air throw check (slot +4, D_019d6c): none, D0 = 0
+01d528  chr_billy_check_specials  | billy special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01d656  chr_iori_check_throw  | iori ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01d69a  chr_iori_check_air_throw  | iori air throw check (slot +4, D_019d6c): none, D0 = 0
+01d69e  chr_iori_check_specials  | iori special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01d848  chr_orochi_iori_check_throw  | orochi_iori ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01d88c  chr_orochi_iori_check_air_throw  | orochi_iori air throw check (slot +4, D_019d6c): none, D0 = 0
+01d890  chr_orochi_iori_check_specials  | orochi_iori special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01da3a  chr_orochi_leona_check_throw  | orochi_leona ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01da7e  chr_orochi_leona_check_air_throw  | orochi_leona air throw check (slot +4, D_019d6c): airborne opponent + button -> air throw record
+01daa2  chr_orochi_leona_check_specials  | orochi_leona special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01dbec  chr_orochi_check_throw  | orochi ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01dc30  chr_orochi_check_air_throw  | orochi air throw check (slot +4, D_019d6c): none, D0 = 0
+01dc34  chr_orochi_check_specials  | orochi special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+01dd00  chr_shingo_check_throw  | shingo ground throw check (slot +0, D_019d2c): b/f + C or D close -> throw record -> +0x192
+01dd44  chr_shingo_check_air_throw  | shingo air throw check (slot +4, D_019d6c): none, D0 = 0
+01dd48  chr_shingo_check_specials  | shingo special/DM/command-normal check (slot +8, D_019dac): ground and airborne (+0xe0 bit 1) branches
+0a6c00  CHR_MOTION_LISTS     | per character 16 bytes: list facing left, list facing right, Orochi-version left, right (ids 0-31)
+0a6e00  MOTION_LIST_KYO_L  | kyo motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6e38  MOTION_LIST_KYO_R  | kyo motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6e70  MOTION_LIST_BENIMARU_L  | benimaru motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6ea8  MOTION_LIST_BENIMARU_R  | benimaru motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6ee0  MOTION_LIST_DAIMON_L  | daimon motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6f14  MOTION_LIST_DAIMON_R  | daimon motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6f48  MOTION_LIST_TERRY_L  | terry motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6f78  MOTION_LIST_TERRY_R  | terry motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6fa8  MOTION_LIST_ANDY_L  | andy motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a6fdc  MOTION_LIST_ANDY_R  | andy motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7010  MOTION_LIST_JOE_L  | joe motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7044  MOTION_LIST_JOE_R  | joe motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7078  MOTION_LIST_RYO_L  | ryo motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a70b4  MOTION_LIST_RYO_R  | ryo motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a70f0  MOTION_LIST_ROBERT_L  | robert motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a712c  MOTION_LIST_ROBERT_R  | robert motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7168  MOTION_LIST_YURI_L  | yuri motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a719c  MOTION_LIST_YURI_R  | yuri motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a71d0  MOTION_LIST_LEONA_L  | leona motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7204  MOTION_LIST_LEONA_R  | leona motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7238  MOTION_LIST_RALF_L  | ralf motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7270  MOTION_LIST_RALF_R  | ralf motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a72a8  MOTION_LIST_CLARK_L  | clark motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a72d8  MOTION_LIST_CLARK_R  | clark motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7308  MOTION_LIST_ATHENA_L  | athena motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a733c  MOTION_LIST_ATHENA_R  | athena motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7370  MOTION_LIST_KENSOU_L  | kensou motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a73a4  MOTION_LIST_KENSOU_R  | kensou motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a73d8  MOTION_LIST_CHIN_L  | chin motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7408  MOTION_LIST_CHIN_R  | chin motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7438  MOTION_LIST_CHIZURU_L  | chizuru motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a746c  MOTION_LIST_CHIZURU_R  | chizuru motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a74a0  MOTION_LIST_MAI_L  | mai motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a74d8  MOTION_LIST_MAI_R  | mai motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7510  MOTION_LIST_KING_L  | king motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7544  MOTION_LIST_KING_R  | king motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7578  MOTION_LIST_KIM_L  | kim motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a75ac  MOTION_LIST_KIM_R  | kim motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a75e0  MOTION_LIST_CHANG_L  | chang motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7610  MOTION_LIST_CHANG_R  | chang motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7640  MOTION_LIST_CHOI_L  | choi motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a766c  MOTION_LIST_CHOI_R  | choi motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7698  MOTION_LIST_YASHIRO_L  | yashiro motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a76c8  MOTION_LIST_YASHIRO_R  | yashiro motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a76f8  MOTION_LIST_OYASHIRO_L  | Orochi yashiro motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7728  MOTION_LIST_OYASHIRO_R  | Orochi yashiro motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7758  MOTION_LIST_SHERMIE_L  | shermie motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7784  MOTION_LIST_SHERMIE_R  | shermie motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a77b0  MOTION_LIST_OSHERMIE_L  | Orochi shermie motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a77dc  MOTION_LIST_OSHERMIE_R  | Orochi shermie motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7808  MOTION_LIST_CHRIS_L  | chris motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7834  MOTION_LIST_CHRIS_R  | chris motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7860  MOTION_LIST_OCHRIS_L  | Orochi chris motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7890  MOTION_LIST_OCHRIS_R  | Orochi chris motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a78c0  MOTION_LIST_YAMAZAKI_L  | yamazaki motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a78f0  MOTION_LIST_YAMAZAKI_R  | yamazaki motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7920  MOTION_LIST_MARY_L  | mary motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7958  MOTION_LIST_MARY_R  | mary motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7990  MOTION_LIST_BILLY_L  | billy motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a79c4  MOTION_LIST_BILLY_R  | billy motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a79f8  MOTION_LIST_IORI_L  | iori motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7a30  MOTION_LIST_IORI_R  | iori motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7a68  MOTION_LIST_OROCHI_IORI_L  | orochi_iori motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7aa0  MOTION_LIST_OROCHI_IORI_R  | orochi_iori motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7ad8  MOTION_LIST_OROCHI_LEONA_L  | orochi_leona motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7b0c  MOTION_LIST_OROCHI_LEONA_R  | orochi_leona motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7b40  MOTION_LIST_OROCHI_L  | orochi motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7b68  MOTION_LIST_OROCHI_R  | orochi motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7b90  MOTION_LIST_SHINGO_L  | shingo motion list, facing left (own x > opponent x) (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7bc0  MOTION_LIST_SHINGO_R  | shingo motion list, facing right (pointers to motion records, -1 end; entry n -> input +4+n/4 bit 2*(n%4))
+0a7bf0  MOTION_NONE          | unused list slot (nsteps 0xff)
+0a7bf2  MOTION_RUN_L         | left, neutral, left within 8 frames (run when facing left; backstep facing right)
+0a7bfc  MOTION_BACKSTEP_L    | right, neutral, right within 8
+0a7c06  MOTION_SUPER_JUMP    | neutral, down, up within 18
+0a7c24  MOTION_QCF_L         | d, d+left, left, button (16 f): qcf facing left = qcb facing right
+0a7c30  MOTION_QCB_L         | qcb facing left
+0a7c3c  MOTION_F_HCF_L       | f, b, d, f + button (25 f)
+0a7c4a  MOTION_B_HCB_L       | b, f, d, b + button (25 f)
+0a7c58  MOTION_HCB_L         | f, d, b + button (20 f)
+0a7c64  MOTION_HCF_L         | b, d, f + button (20 f)
+0a7ca4  MOTION_CHARGE_DU     | charge down 30 f, then up + button within 12 f
+0a7cc6  MOTION_DP_L          | f, d, df + button (14 f)
+0a7cd2  MOTION_RDP_L         | b, d, db + button (14 f)
+0a7d5a  MOTION_CHARGE_BF_L   | charge back 30 f, then forward + button within 12 f
+0a7d6e  MOTION_QCF_HCB_L     | d, f, d, b + button (25 f)
+0a7d7c  MOTION_QCB_HCF_L     | d, b, d, f + button (25 f)
+0a7d8a  MOTION_MASH_PUNCH    | A or C pressed 4 times (with release between) within 32 f
+0a7e2a  MOTION_QCF2_L        | d, f, d, df, f + button (30 f)
+0a7e3a  MOTION_QCB2_L        | (30 f)
+0a7e4a  MOTION_HCB_F_L       | f, d, b, f + button (25 f)
+0a7eb0  MOTION_QCB_DB_F_L    | d, db, b, db, f + button (21 f) (Power Geyser / Kim)
+0a7ed0  MOTION_DB_F_L        | db, f + button (8 f) (Andy)
+0a7ef8  MOTION_HCB2_L        | (35 f)
+0a7f0a  MOTION_HCF2_L        | (35 f)
+
+# ---- CPU AI: per frame cpu_generate_input runs a 4-opcode script (+0x16a, opcodes left +0x16e) chosen from P2 ROM
+# ---- tables by character, distance band, opponent move and aggressiveness; opcodes via CPU_AI_OP_TABLE
+011e66  CPU_AI_THINK_DELAY_TABLE | [difficulty*11 + stage] frames between AI decisions
+01567e  cpu_clear_command_offers | clear the odd offer bits of input +5..+7
+0286f8  count_teams_beaten   | D0 = number of teams beaten (bits of 0x10a796) = arcade stage index
+02d036  cpu_input_busy       | no command offered: keep crouch-guarding in guard stun, else guard-cancel check
+02d066  cpu_input_guard_cancel | guarding and hit: 25% chance A+B (+ back 25%) once per guard (+0x174 bit 5)
+02d0c6  cpu_input_actionable | can act: check for an incoming projectile, else normal thinking
+02d126  cpu_input_think      | leave projectile mode; continue the script or pick a new one
+02d156  cpu_input_decide     | think-delay countdown (0x10daf9), then classify distance, category, opponent move, script
+02d19c  cpu_input_fetch_op   | op = script[4 - +0x16e] -> +0x164 = op*2
+02d1e2  cpu_ai_dispatch_op   | jsr through CPU_AI_OP_TABLE (word offsets)
+02d1f6  cpu_input_finish     | clear the +0xf4 ready bits, debug display, clear the offers, bank 2
+02d256  cpu_ai_proj_react_wave | opponent move 0x74 (ground wave): projectile reaction mode 1
+02d268  cpu_ai_proj_react_fireball | opponent move 0x75/0xaf (fireballs): mode 2
+02d27a  cpu_ai_proj_react_big | opponent move 0xbd/0xbe (large projectiles): mode 3
+02d28c  cpu_ai_proj_react_large | opponent move 0xd8: mode 4
+02d2ae  cpu_ai_proj_react_start | projectile mode: +0x174 bit 6, mode -> +0x16f, jump to the per-character picker
+02d2d8  cpu_ai_proj_distance_band | |projectile dx| -> band 0-4 in 0x10ecdc (slow/fast threshold tables)
+02d318  CPU_AI_PROJ_BAND_SLOW | projectile distance thresholds per character, slow projectiles
+02d398  CPU_AI_PROJ_BAND_FAST | projectile distance thresholds per character, fast projectiles
+02d418  cpu_ai_react_guard   | projectile reaction 4: guard while the projectile band < 4
+02d450  cpu_ai_react_roll    | projectile reaction 0: A+B roll at band 0
+02d478  cpu_ai_react_bcd     | projectile reaction 5: B+C+D at band 0
+02d4a0  cpu_ai_react_special | projectile reaction 6: a special move at band 3, closer -> guard
+02d53a  cpu_ai_react_slot7_a | projectile reaction 8: slot 7 + A at band 3
+02d588  cpu_ai_react_slot7_c | projectile reaction 9: slot 7 + C at band 3
+02d5d6  cpu_ai_react_slot5_d | projectile reaction 10: slot 5 + D at band 3
+02d624  cpu_ai_react_jump_up | projectile reaction 3: jump up at band 1
+02d6a8  cpu_ai_react_jump_fwd | projectile reaction 1: jump forward over it at band 2
+02d736  cpu_ai_react_superjump | projectile reaction 2: super jump forward at band > 1
+02d7c2  cpu_ai_react_crouch_guard | projectile reaction 7: crouch guard
+02d7f2  CPU_AI_REACT_PICK_WAVE | word offsets per character: reaction picker for mode 1
+02d832  cpu_ai_react_pick    | +0x169 = 4 + a random entry of the reaction choices row
+02d8da  cpu_ai_react_dispatch | run reaction (+0x169 - 4) from CPU_AI_REACT_TABLE
+02d8f0  CPU_AI_REACT_TABLE   | projectile reactions 0-10
+02d91c  CPU_AI_REACT_CHOICES | 5 rows x 16 random reaction choices
+02d96c  CPU_AI_REACT_PICK_FIREBALL | reaction pickers for mode 2
+02d9f0  CPU_AI_REACT_PICK_BIG | reaction pickers for mode 3
+02db68  CPU_AI_REACT_PICK_LARGE | reaction pickers for mode 4
+02dc7c  cpu_ai_mash          | dizzy / held in a throw (+0xe4 bit 1): random presses, chance (level+1)/32
+02dc94  cpu_ai_opp_attacking | D0 = -1 if the opponent's attack is active (+0xe0 bit 0)
+02dca4  cpu_ai_hold_forward  | hold the direction toward the opponent
+02dcba  cpu_ai_hold_back     | hold the direction away from the opponent (guard)
+02dcd0  cpu_ai_ready_move_or_guard | +0xf4 bit 4 or 0 -> D0 = 0, else -1
+02dcd8  cpu_ai_ready_move    | +0xf4 bit 0 (can move)
+02dcee  cpu_ai_ready_command | +0xf4 bit 3 (can start a command move)
+02dd00  cpu_ai_enter_command | D0 = slot request bit: wait for the offer bit, set the request, advance
+02dd24  cpu_ai_ready_buttons | +0xf4 bits 1 and 2: advance the script
+02dd34  cpu_ai_ready_cd      | +0xf4 bit 2: advance
+02dd3e  cpu_ai_ready_ab      | +0xf4 bit 1: advance
+02de16  cpu_ai_classify_opponent_move | +0x160 = the opponent's move id in a special, else the class of its animation (0xaca98)
+02df36  cpu_ai_opp_move_set_3c | +0x160 = 0x3c (opponent animation 0x1a)
+02df3e  cpu_ai_opp_move_air_fix | move classes 0x18/0x21/0x2a: +1 if falling; attack active -> 8/0xa/0xc
+02e074  cpu_ai_choose_category | ground: aggressiveness category +0x171 from the level row vs random; air: cpu_ai_choose_air_category
+02e0e8  CPU_AI_CATEGORY_THRESH | 16 levels x 4 random thresholds for the category
+02e128  cpu_ai_choose_air_category | air category 0xa.. (+3 if rising), 0xff when too far vertically
+02e18c  cpu_ai_air_out_of_range | |dy| above the band's air threshold -> D0 = -1
+02e1cc  cpu_ai_compute_level | aggression level 0-15 (0x10db02) from difficulty, stage, time, health
+02e23c  CPU_AI_LEVEL_TABLE   | per difficulty: base level per stage
+02e2b4  cpu_ai_level_time_bonus | level bonus 0-4 as the round timer runs down (+1 if not ahead)
+02e2ec  cpu_ai_level_health_bonus | level bonus 0/1/2/4 as own health drops (+2 if not ahead)
+02e31a  cpu_ai_back_to_wall  | D0 = -1 if backing away would pass the screen edge
+02e352  cpu_ai_find_projectile | nearest approaching projectile of the other side -> A3 (D3 = -1 none)
+02e35e  cpu_ai_find_nearest_object | D0 = object class: scan OBJ_LIST for the nearest
+02e3e2  CPU_AI_OP_TABLE      | 256 word offsets -> AI opcode handlers (a script is 4 opcode bytes)
+02e5e2  cpu_op_00_press_a    | AI opcode 00: press A
+02e5f6  cpu_op_01_press_b    | AI opcode 01: press B
+02e60a  cpu_op_02_press_c    | AI opcode 02: press C
+02e61e  cpu_op_03_press_d    | AI opcode 03: press D
+02e632  cpu_op_04_crouch_a   | AI opcode 04: down+A, keep crouching
+02e64c  cpu_op_05_crouch_b   | AI opcode 05: down+B, keep crouching
+02e666  cpu_op_06_crouch_c   | AI opcode 06: down+C, keep crouching
+02e680  cpu_op_07_crouch_d   | AI opcode 07: down+D, keep crouching
+02e69a  cpu_op_08_fwd_a      | AI opcode 08: forward+A
+02e6b2  cpu_op_09_fwd_b      | AI opcode 09: forward+B
+02e6ca  cpu_op_0a_fwd_c      | AI opcode 0a: forward+C
+02e6e2  cpu_op_0b_fwd_d      | AI opcode 0b: forward+D
+02e6fa  cpu_op_0c_back_a     | AI opcode 0c: back+A
+02e712  cpu_op_0d_back_b     | AI opcode 0d: back+B
+02e72a  cpu_op_0e_back_c     | AI opcode 0e: back+C
+02e742  cpu_op_0f_back_d     | AI opcode 0f: back+D
+02e75a  cpu_op_10_down_a     | AI opcode 10: down+A
+02e772  cpu_op_11_down_b     | AI opcode 11: down+B
+02e78a  cpu_op_12_down_c     | AI opcode 12: down+C
+02e7a2  cpu_op_13_down_d     | AI opcode 13: down+D
+02e7ba  cpu_op_14_downfwd_a  | AI opcode 14: down-forward+A
+02e7d6  cpu_op_15_downfwd_b  | AI opcode 15: down-forward+B
+02e7f6  cpu_op_16_downfwd_c  | AI opcode 16: down-forward+C
+02e816  cpu_op_17_downfwd_d  | AI opcode 17: down-forward+D
+02e836  cpu_op_18_downback_a | AI opcode 18: down-back+A
+02e856  cpu_op_19_downback_b | AI opcode 19: down-back+B
+02e876  cpu_op_1a_downback_c | AI opcode 1a: down-back+C
+02e896  cpu_op_1b_downback_d | AI opcode 1b: down-back+D
+02e8b6  cpu_op_1c_roll_back  | AI opcode 1c: back+A+B roll back (not when cornered)
+02e8d6  cpu_op_1d_taunt      | AI opcode 1d: Start (taunt)
+02e8fc  cpu_op_1e_blowback   | AI opcode 1e: C+D blowback
+02e910  cpu_op_1f_roll       | AI opcode 1f: A+B roll
+02e924  cpu_op_20_bcd        | AI opcode 20: B+C+D
+02e938  cpu_op_nop_02e938    | AI opcode 21: no-op: advance the script
+02e93e  cpu_op_28_abc        | AI opcode 28: A+B+C (MAX activation)
+02e99e  cpu_op_29_charge_97_abort | AI opcode 29: hold A+B+C 97 frames, abort on attack
+02e9c4  cpu_op_2a_charge_65_abort | AI opcode 2a: hold A+B+C 65 frames, abort on attack
+02e9ec  cpu_op_2b_charge_129 | AI opcode 2b: hold A+B+C 129 frames
+02ea0e  cpu_op_2c_charge_97  | AI opcode 2c: hold A+B+C 97 frames
+02ea30  cpu_op_2d_charge_65  | AI opcode 2d: hold A+B+C 65 frames
+02ea52  cpu_op_nop_02ea52    | AI opcode 2e: no-op: advance the script
+02ea58  cpu_op_30_jump       | AI opcode 30: jump up
+02ea9c  cpu_op_31_hop        | AI opcode 31: hop up
+02eae0  cpu_op_32_jump_fwd   | AI opcode 32: jump forward
+02eb28  cpu_op_33_hop_fwd    | AI opcode 33: hop forward
+02eb70  cpu_op_34_superjump_fwd | AI opcode 34: super jump forward
+02eb9a  cpu_op_35_superjump_fwd_hold | AI opcode 35: super jump forward, held 6 frames
+02ebea  cpu_op_36_jump_back  | AI opcode 36: jump back (not when cornered)
+02ec38  cpu_op_37_hop_back   | AI opcode 37: hop back (not when cornered)
+02ec86  cpu_op_38_superjump_back | AI opcode 38: super jump back
+02ecb6  cpu_op_39_superjump_back_hold | AI opcode 39: super jump back, held
+02ed0e  cpu_op_nop_02ed0e    | AI opcode 3a: no-op: advance the script
+02ed14  cpu_op_40_backstep   | AI opcode 40: backstep (not when cornered)
+02ed30  cpu_op_41_run        | AI opcode 41: run forward 9-40 frames, abort on attack
+02ed86  cpu_op_42_run_to_band0 | AI opcode 42: run until distance band <= 0, abort on attack
+02ede4  cpu_op_43_run_to_band1 | AI opcode 43: run until distance band <= 1, abort on attack
+02ee1c  cpu_op_44_run_to_band2 | AI opcode 44: run until distance band <= 2, abort on attack
+02ee56  cpu_op_45_run_to_band3 | AI opcode 45: run until distance band <= 3, abort on attack
+02ee92  cpu_op_46_run_noabort | AI opcode 46: run forward 9-40 frames
+02eee2  cpu_op_47_run_to_band0_noabort | AI opcode 47: run until distance band <= 0
+02ef3a  cpu_op_48_run_to_band1_noabort | AI opcode 48: run until distance band <= 1
+02ef6c  cpu_op_49_run_to_band2_noabort | AI opcode 49: run until distance band <= 2
+02efa0  cpu_op_4a_run_to_band3_noabort | AI opcode 4a: run until distance band <= 3
+02efd4  cpu_op_nop_02efd4    | AI opcode 4b: no-op: advance the script
+02efda  cpu_op_50_slot5_a    | AI opcode 50: special move: command slot 5 with A
+02efee  cpu_op_51_slot5_b    | AI opcode 51: special move: command slot 5 with B
+02f002  cpu_op_52_slot5_c    | AI opcode 52: special move: command slot 5 with C
+02f016  cpu_op_53_slot5_d    | AI opcode 53: special move: command slot 5 with D
+02f02a  cpu_op_54_slot6_a    | AI opcode 54: special move: command slot 6 with A
+02f03e  cpu_op_55_slot6_b    | AI opcode 55: special move: command slot 6 with B
+02f052  cpu_op_56_slot6_c    | AI opcode 56: special move: command slot 6 with C
+02f066  cpu_op_57_slot6_d    | AI opcode 57: special move: command slot 6 with D
+02f07a  cpu_op_58_slot7_a    | AI opcode 58: special move: command slot 7 with A
+02f08e  cpu_op_59_slot7_b    | AI opcode 59: special move: command slot 7 with B
+02f0a2  cpu_op_5a_slot7_c    | AI opcode 5a: special move: command slot 7 with C
+02f0b6  cpu_op_5b_slot7_d    | AI opcode 5b: special move: command slot 7 with D
+02f0ca  cpu_op_5c_slot8_a    | AI opcode 5c: special move: command slot 8 with A
+02f0de  cpu_op_5d_slot8_b    | AI opcode 5d: special move: command slot 8 with B
+02f0f2  cpu_op_5e_slot8_c    | AI opcode 5e: special move: command slot 8 with C
+02f106  cpu_op_5f_slot8_d    | AI opcode 5f: special move: command slot 8 with D
+02f11a  cpu_op_60_slot9_a    | AI opcode 60: special move: command slot 9 with A
+02f12e  cpu_op_61_slot9_b    | AI opcode 61: special move: command slot 9 with B
+02f142  cpu_op_62_slot9_c    | AI opcode 62: special move: command slot 9 with C
+02f156  cpu_op_63_slot9_d    | AI opcode 63: special move: command slot 9 with D
+02f16a  cpu_op_64_slot10_a   | AI opcode 64: special move: command slot 10 with A
+02f17e  cpu_op_65_slot10_b   | AI opcode 65: special move: command slot 10 with B
+02f192  cpu_op_66_slot10_c   | AI opcode 66: special move: command slot 10 with C
+02f1a6  cpu_op_67_slot10_d   | AI opcode 67: special move: command slot 10 with D
+02f1ba  cpu_op_68_slot11_a   | AI opcode 68: special move: command slot 11 with A
+02f1ce  cpu_op_69_slot11_b   | AI opcode 69: special move: command slot 11 with B
+02f1e2  cpu_op_6a_slot11_c   | AI opcode 6a: special move: command slot 11 with C
+02f1f6  cpu_op_6b_slot11_d   | AI opcode 6b: special move: command slot 11 with D
+02f20a  cpu_op_6c_slot12_a   | AI opcode 6c: special move: command slot 12 with A
+02f21a  cpu_op_6d_slot12_b   | AI opcode 6d: special move: command slot 12 with B
+02f22a  cpu_op_6e_slot12_c   | AI opcode 6e: special move: command slot 12 with C
+02f23a  cpu_op_6f_slot12_d   | AI opcode 6f: special move: command slot 12 with D
+02f24a  cpu_op_70_slot13_a   | AI opcode 70: special move: command slot 13 with A
+02f25a  cpu_op_71_slot13_b   | AI opcode 71: special move: command slot 13 with B
+02f264  cpu_op_72_slot13_c   | AI opcode 72: special move: command slot 13 with C
+02f274  cpu_op_73_slot13_d   | AI opcode 73: special move: command slot 13 with D
+02f284  cpu_op_74_slot14_a   | AI opcode 74: special move: command slot 14 with A
+02f294  cpu_op_75_slot14_b   | AI opcode 75: special move: command slot 14 with B
+02f2a4  cpu_op_76_slot14_c   | AI opcode 76: special move: command slot 14 with C
+02f2b4  cpu_op_77_slot14_d   | AI opcode 77: special move: command slot 14 with D
+02f2c4  cpu_op_78_slot15_a   | AI opcode 78: special move: command slot 15 with A
+02f2d4  cpu_op_79_slot15_b   | AI opcode 79: special move: command slot 15 with B
+02f2e4  cpu_op_7a_slot15_c   | AI opcode 7a: special move: command slot 15 with C
+02f2f4  cpu_op_7b_slot15_d   | AI opcode 7b: special move: command slot 15 with D
+02f304  cpu_op_nop_02f304    | AI opcode 7c: no-op: advance the script
+02f30a  cpu_op_nop_02f30a    | AI opcode 80: no-op: advance the script
+02f310  cpu_op_90_guard      | AI opcode 90: guard 1 frame
+02f328  cpu_op_91_guard_5    | AI opcode 91: guard 5 frames
+02f35c  cpu_op_92_guard_11   | AI opcode 92: guard 11 frames
+02f37c  cpu_op_93_guard_31   | AI opcode 93: guard 31 frames
+02f39c  cpu_op_nop_02f39c    | AI opcode 94: no-op: advance the script
+02f3a2  cpu_op_98_crouch_guard | AI opcode 98: crouch guard 1 frame
+02f3ce  cpu_op_99_crouch_guard_5 | AI opcode 99: crouch guard 5 frames
+02f416  cpu_op_9a_crouch_guard_11 | AI opcode 9a: crouch guard 11 frames
+02f436  cpu_op_9b_crouch_guard_31 | AI opcode 9b: crouch guard 31 frames
+02f456  cpu_op_nop_02f456    | AI opcode 9c: no-op: advance the script
+02f45c  cpu_op_a0_wait_ready | AI opcode a0: wait until ready or the opponent attacks
+02f474  cpu_op_a1_wait_5     | AI opcode a1: wait 5 frames, abort on attack
+02f4a6  cpu_op_a2_wait_11    | AI opcode a2: wait 11 frames, abort on attack
+02f4c8  cpu_op_a3_wait_rand  | AI opcode a3: wait 31-62 frames, abort on attack
+02f4f4  cpu_op_a4_wait_5_noabort | AI opcode a4: wait 5 frames
+02f520  cpu_op_a5_wait_11_noabort | AI opcode a5: wait 11 frames
+02f53c  cpu_op_a6_wait_rand_noabort | AI opcode a6: wait 31-62 frames
+02f562  cpu_op_nop_02f562    | AI opcode a7: no-op: advance the script
+02f568  cpu_op_a8_crouch_5   | AI opcode a8: crouch 5 frames, abort on attack
+02f5a4  cpu_op_a9_crouch_11  | AI opcode a9: crouch 11 frames, abort on attack
+02f5d0  cpu_op_aa_crouch_rand | AI opcode aa: crouch 31-62 frames, abort on attack
+02f606  cpu_op_ab_crouch_5_noabort | AI opcode ab: crouch 5 frames
+02f63c  cpu_op_ac_crouch_11_noabort | AI opcode ac: crouch 11 frames
+02f662  cpu_op_ad_crouch_rand_noabort | AI opcode ad: crouch 31-62 frames
+02f692  cpu_op_nop_02f692    | AI opcode ae: no-op: advance the script
+02f698  cpu_op_b0_walk_fwd   | AI opcode b0: walk forward 11-42 frames, abort on attack
+02f6e0  cpu_op_b1_walk_to_band0 | AI opcode b1: walk forward until band <= 0, abort on attack
+02f738  cpu_op_b2_walk_to_band1 | AI opcode b2: walk forward until band <= 1, abort on attack
+02f762  cpu_op_b3_walk_to_band2 | AI opcode b3: walk forward until band <= 2, abort on attack
+02f78c  cpu_op_b4_walk_to_band3 | AI opcode b4: walk forward until band <= 3, abort on attack
+02f7b8  cpu_op_nop_02f7b8    | AI opcode b5: no-op: advance the script
+02f7be  cpu_op_b8_walk_fwd_noabort | AI opcode b8: walk forward 11-42 frames
+02f7f6  cpu_op_b9_walk_to_band0_noabort | AI opcode b9: walk forward until band <= 0
+02f840  cpu_op_ba_walk_to_band1_noabort | AI opcode ba: walk forward until band <= 1
+02f864  cpu_op_bb_walk_to_band2_noabort | AI opcode bb: walk forward until band <= 2
+02f888  cpu_op_bc_walk_to_band3_noabort | AI opcode bc: walk forward until band <= 3
+02f8ac  cpu_op_nop_02f8ac    | AI opcode bd: no-op: advance the script
+02f8b2  cpu_op_c0_walk_back  | AI opcode c0: walk back 11-42 frames, abort on attack or cornered
+02f900  cpu_op_c1_walk_back_to_band1 | AI opcode c1: walk back until band >= 1, abort on attack
+02f956  cpu_op_c2_walk_back_to_band2 | AI opcode c2: walk back until band >= 2, abort on attack
+02f986  cpu_op_c3_walk_back_to_band3 | AI opcode c3: walk back until band >= 3, abort on attack
+02f9b6  cpu_op_c4_walk_back_to_band4 | AI opcode c4: walk back until band >= 4, abort on attack
+02f9e8  cpu_op_nop_02f9e8    | AI opcode c5: no-op: advance the script
+02f9ee  cpu_op_c8_walk_back_noabort | AI opcode c8: walk back 11-42 frames (cornered check only)
+02fa38  cpu_op_c9_walk_back_to_band1_noabort | AI opcode c9: walk back until band >= 1
+02fa8a  cpu_op_ca_walk_back_to_band2_noabort | AI opcode ca: walk back until band >= 2
+02fab6  cpu_op_cb_walk_back_to_band3_noabort | AI opcode cb: walk back until band >= 3
+02fae2  cpu_op_cc_walk_back_to_band4_noabort | AI opcode cc: walk back until band >= 4
+02fb10  cpu_op_nop_02fb10    | AI opcode cd: no-op: advance the script
+02fb16  cpu_op_nop_02fb16    | AI opcode d0: no-op: advance the script
+02fb1c  cpu_op_nop_02fb1c    | AI opcode e0: no-op: advance the script
+02fb22  cpu_op_f0_if_not_winning | AI opcode f0: continue only if own health <= opponent's
+02fb34  cpu_op_f1_if_winning | AI opcode f1: continue only if own health > opponent's
+02fb46  cpu_op_f2_wait_falling | AI opcode f2: while airborne wait until falling
+02fb5c  cpu_op_f3_wait_landed | AI opcode f3: wait until landed and ready
+02fb74  cpu_op_f4_wait_11b   | AI opcode f4: wait 11 frames
+02fb8c  cpu_op_end_script    | AI opcode f5: end the script, re-think
+0aca98  CPU_AI_ANIM_CLASS    | opponent animation -> move class used by the AI tables
+
+# ---- hardware registers ---------------------------------------------------------------------------
+300000  REG_P1CNT            | player 1 joystick/buttons (active low)
+300001  REG_DIPSW            | write: watchdog kick
+300081  REG_SYSTYPE          | MVS test switch / slot type
+320000  REG_SOUND            | write: sound command to the Z80; read: reply
+320001  REG_STATUS_A         | coins, service, calendar TP/DATA
+340000  REG_P2CNT            | player 2 joystick/buttons
+380000  REG_STATUS_B         | start/select buttons, memory card, AES/MVS
+380001  REG_POUTPUT          | joystick port outputs
+380021  REG_SLOT             | MVS slot select
+380031  REG_LEDLATCHES
+380041  REG_LEDDATA
+380051  REG_RTCCTRL          | uPD4990A calendar: data, clock, strobe
+380061  REG_RESETCC1
+380063  REG_RESETCC2
+380065  REG_RESETCL1
+380067  REG_RESETCL2
+3a0001  REG_NOSHADOW
+3a0003  REG_SWPBIOS          | BIOS vector table at 0
+3a0005  REG_CRDUNLOCK1
+3a0007  REG_CRDLOCK2
+3a0009  REG_CRDREGSEL
+3a000b  REG_BRDFIX           | BIOS fix ROM + BIOS Z80 ROM
+3a000d  REG_SRAMLOCK         | write-protect backup RAM
+3a000f  REG_PALBANK1
+3a0011  REG_SHADOW
+3a0013  REG_SWPROM           | cartridge vector table at 0
+3a0015  REG_CRDLOCK1
+3a0017  REG_CRDUNLOCK2
+3a0019  REG_CRDNORMAL
+3a001b  REG_CRTFIX           | cartridge fix ROM + cartridge Z80 ROM
+3a001d  REG_SRAMUNLOCK
+3a001f  REG_PALBANK0
+3c0000  REG_VRAMADDR
+3c0002  REG_VRAMRW
+3c0004  REG_VRAMMOD
+3c0006  REG_LSPCMODE
+3c0008  REG_TIMERHIGH
+3c000a  REG_TIMERLOW
+3c000c  REG_IRQACK
+3c000e  REG_TIMERSTOP
+400000  PALETTE_RAM
+401ffe  PALETTE_BACKDROP     | palette entry 4095 = background colour
+d00000  BACKUP_RAM
+d00100  BACKUP_LOCKOUT_FLAG  | KOF97: non-zero -> lockout_warning (set when the watchdog did not fire)
+2ffff0  REG_BANKSWITCH       | P2 bank select
+
+# ---- BIOS calls -----------------------------------------------------------------------------------
+c00438  SYSTEM_INT1
+c0043e  SYSTEM_INT2
+c00444  SYSTEM_RETURN
+c0044a  SYSTEM_IO
+c00450  CREDIT_CHECK
+c00456  CREDIT_DOWN
+c0045c  READ_CALENDAR
+c00462  SETUP_CALENDAR
+c00468  CARD
+c0046e  CARD_ERROR
+c00474  HOW_TO_PLAY
+c004c2  FIX_CLEAR
+c004c8  LSP_1ST
+c004ce  MESS_OUT
+c004d4  CONTROLLER_SETUP
+
+# ---- BIOS work RAM --------------------------------------------------------------------------------
+10f300  STACK_TOP            | initial SSP
+10fd80  BIOS_SYSRET_STATUS   | bit 7: game handles VBlank itself
+10fd82  BIOS_MVS_FLAG        | 0 = AES, 1 = MVS
+10fd83  BIOS_COUNTRY_CODE
+10fd84  BIOS_GAME_DIP        | 16 bytes: soft-DIP settings
+10fd94  BIOS_P1STATUS
+10fd95  BIOS_P1PREVIOUS
+10fd96  BIOS_P1CURRENT
+10fd97  BIOS_P1CHANGE
+10fd98  BIOS_P1REPEAT
+10fd99  BIOS_P1TIMER
+10fd9a  BIOS_P2STATUS
+10fd9b  BIOS_P2PREVIOUS
+10fd9c  BIOS_P2CURRENT
+10fd9d  BIOS_P2CHANGE
+10fd9e  BIOS_P2REPEAT
+10fd9f  BIOS_P2TIMER
+10fdac  BIOS_STATCURNT
+10fdad  BIOS_STATCHANGE
+10fdae  BIOS_USER_REQUEST    | 0 init, 1 eye-catcher, 2 demo, 3 title
+10fdaf  BIOS_USER_MODE
+10fdb0  BIOS_CREDIT_DEC
+10fdb4  BIOS_START_FLAG
+10fdb6  BIOS_PLAYER_MOD
+10fdbe  BIOS_MESS_POINT
+10fdc2  BIOS_MESS_BUSY
+10fdc4  BIOS_CARD_COMMAND
+10fdc6  BIOS_CARD_ANSWER
+10fdc8  BIOS_CARD_START
+10fdcc  BIOS_CARD_SIZE
+
+# ---- game work RAM (A5 = 0x108000 throughout the game code) ---------------------------------------
+108000  A5_BASE              | game globals are addressed as (d16,A5) from here
+100000  GAME_FLAGS           | (A5-0x8000)
+100098  FRAME_COUNTER        | (A5-0x7f68) long, incremented by vblank_game
+100100  OBJ_LIST             | (A5-0x7f00) head of the object priority list; objects are 0x200 bytes
+108100  PLAYER1              | player 1 object (see OBJECT LAYOUT below)
+108238  P1_HEALTH            | word, 0x67 = full
+108300  PLAYER2              | player 2 / CPU object
+108438  P2_HEALTH            | word
+10a700  OBJ_FREE_SLOTS       | (A5+0x2700) stack of free object slots
+10a780  OBJ_FREE_TOP         | (A5+0x2780) index into OBJ_FREE_SLOTS
+10a785  VBLANK_DONE          | set by vblank_game, cleared and polled by main_loop
+10a786  FRAME_STATUS
+10a847  P1_SELECT            | P1 character-select block (0x11 bytes); P2's follows at +0x11
+10a83a  ROUND_TIMER          | BCD seconds shown; poking it does not stop TIME OVER (the real count is elsewhere)
+10a849  P1_MODE              | 0 = ADVANCED, 1 = EXTRA
+10a84b  P1_TEAM              | 3 bytes: character IDs (0-2 Japan ... 27 Iori, 30 Orochi, 31 Shingo)
+10a857  P1_TEAM_OROCHI       | bit n set: team member n is the Orochi version (IDs 21-23)
+10a85a  P2_MODE              | inferred from the P1 layout (+0x11), not verified
+10a85c  P2_TEAM              | 3 bytes (P2 select block + 4)
+10a868  P2_TEAM_OROCHI       | bit n set: P2 team member n is the Orochi version (IDs 21-23); verified: with 7, match_setup_players (0x254c8) sets P2 +0x1d6 and Orochi Yashiro\'s input routine 0x1c7b2 runs for P2
+108500  SCENE_HANDLER        | (A5+0x500) handler of the current scene (title, select, round flow ...)
+10d924  PALETTE_QUEUE_PTR    | (A5+0x5924) write pointer of the palette upload queue (palette number, 16 colours; 0xffff ends)
+201000  CPU_AI_SCRIPT_CHOICE | P2 ROM bank 0: [id*0x1000 + group*16 + category + random] -> script number
+221000  CPU_AI_GROUP_TABLE   | P2 ROM bank 0: [id*0x500 + band*0x100 + opponent move] -> situation group
+22b000  CPU_AI_DIST_THRESH   | P2 ROM bank 0: [situation*0x1000 + id*0x80 + opponent*4] 4 distance band limits
+233000  CPU_AI_SCRIPTS       | P2 ROM bank 0: [id*0x400 + n*4] 4-opcode scripts
+10daf8  CPU_AI_THINK_DELAY   | frames between AI decisions
+10daf9  CPU_AI_THINK_TIMER   | countdown to the next AI decision
+10dafa  CPU_AI_RAND_MASK     | random spread of the script choice
+10dafc  CPU_AI_GROUP         | last situation group / reaction index
+10dafd  CPU_AI_SITUATION     | situation 0-6 for the thresholds, 0xff projectile mode
+10db00  CPU_AI_SCRIPT_NO     | last script number
+10db02  CPU_AI_LEVEL         | aggression level 0-15
+10a796  TEAMS_BEATEN         | bitmask of beaten teams
+10ecdc  CPU_AI_PROJ_BAND     | projectile distance band 0-4
+10d934  BACKDROP_COLOR       | copied to PALETTE_BACKDROP every VBlank
+10d936  SND_QUEUE_IN         | sound command ring buffer: write index
+10d937  SND_QUEUE_OUT        | read index
+10d93e  SND_QUEUE            | ring buffer
+10009a  RNG_ADD              | (A5-0x7f66) added into random
+10009c  RNG_INDEX            | (A5-0x7f64) incremented by every random call
+10b0b2  STATIC_OBJS          | (A5+0x30b2) fixed object slots, 256 bytes each (obj_init_static)
+10bf1e  COLL_LIST_A          | (A5+0x3f1e) object pointers (low words), count in COLL_COUNT_A
+10bf9e  COLL_LIST_B          | (A5+0x3f9e)
+10c01e  COLL_COUNT_A         | (A5+0x401e) byte offset = 2 * count
+10c020  COLL_COUNT_B         | (A5+0x4020)
+c04200  RANDOM_TABLE         | 256 random bytes inside the BIOS ROM, used by random
+
+# OBJECT LAYOUT: 0x200-byte objects; A4 = current object in handlers. "@field OFFSET NAME | comment"
+# lines make mkasm.py annotate (d16,%a4) operands with [obj.NAME].
+@field 000 handler     | jsr target in obj_run_list; state machines store their next step here
+@field 018 x           | X position, 16.16 fixed point
+@field 020 y           | Y position, 16.16
+@field 031 facing      | bit 0: facing direction (obj_face_target)
+@field 050 vx          | X velocity, 16.16
+@field 054 friction    | X velocity factor (obj_apply_friction_x)
+@field 058 vy          | Y velocity, 16.16
+@field 05c gravity     | Y acceleration
+@field 070 anim        | animation id (obj_set_anim)
+@field 072 anim_var    | animation variant
+@field 0b6 opponent    | players: the other player's object
+@field 138 health      | players: word, 0x67 = full
+@field 13a health_drain | players: damage still draining from the bar (hit: health -= d, drain += d); health + drain <= 0x67
+@field 150 health_disp | players: displayed health (health + pending)
+@field 198 next_state  | players: next state handler
+@field 1a6 chr_data    | players: character data pointer
+@field 02e palette     | palette number (obj_queue_palette); the sprite code (0x5bf8) reads +0x2e/+0x2f as horizontal/vertical shrink
+@field 0a0 palette_cur | palette currently loaded
+@field 0f4 cpu_ready    | bits 0-4 set by the player state for the AI: 0 move, 1 A/B, 2 C/D, 3 command move, 4 guard stun
+@field 0f6 move_id      | current special / attack id (0x74 ground wave, 0x75 fireball ...); the AI reads it
+@field 160 ai_opp_move  | word: opponent move class / id (AI table column)
+@field 162 ai_op_timer  | word: frame counter of the running AI opcode
+@field 164 ai_op        | word: current AI opcode * 2
+@field 168 ai_react_step | projectile reaction step
+@field 169 ai_react_choice | projectile reaction index * 4 + 4 (0 = none)
+@field 16a ai_script    | long: current 4-opcode AI script
+@field 16e ai_ops_left  | AI opcodes left in the script (4..0)
+@field 16f ai_react_mode | projectile reaction mode 1-4 (0 none)
+@field 170 control      | bit 7 CPU-controlled, low bits = side
+@field 171 ai_category  | AI aggressiveness category (0 most aggressive; 0xa.. air; 0xff none)
+@field 172 ai_dist_band | AI distance band 0-4
+@field 173 ai_op_state  | AI opcode state: 0 not started, 1.. running / target band, 0xff guard
+@field 174 ai_hold      | low nibble: direction held each frame; bit 1 crouch, 5 guard cancel tried, 6 projectile mode
+@field 180 chr_idx2     | character id * 2
+@field 182 chr_idx4     | character id * 4
+@field 184 chr_idx8     | character id * 8
+@field 186 chr_idx16    | character id * 16
