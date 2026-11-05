@@ -1,0 +1,13 @@
+/* Sprite replacement with remade images (see spr_native.c). */
+#ifndef SPR_NATIVE_H
+#define SPR_NATIVE_H
+#include <stdint.h>
+
+typedef struct { int w, h; uint8_t *rgba; } spr_image;
+typedef struct { uint32_t key; int first, w, h, flips; const spr_image *img; } spr_block;
+
+int spr_native_init(const char *mods_dir);          /* mods_dir/sprites/<key>.png */
+const spr_block *spr_native_block(int sprite);       /* replacement block a hardware sprite belongs to, or NULL */
+void spr_native_stats(void);
+
+#endif

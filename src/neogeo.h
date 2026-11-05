@@ -9,6 +9,8 @@
 #define NG_LINES 264
 #define NG_VBSTART 240          /* first vblank line (VBlank IRQ) */
 #define NG_VBEND 16             /* first visible line */
+extern int ng_frame_render;
+extern void (*ng_sound_log)(int frame, int dir, uint8_t val);   /* dir 0: 68k -> Z80 command, 1: Z80 reply */
 #define NG_CYCLES_PER_LINE 768  /* 12 MHz 68000, 384 pixel clocks per line at 6 MHz */
 #define NG_Z80_CYCLES_PER_LINE 256
 #define NG_WATCHDOG_CYCLES (3244030 / 2)   /* 24 MHz master clocks -> 68000 cycles */

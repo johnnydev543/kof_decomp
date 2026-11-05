@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "neogeo.h"
+#include "spr_native.h"
 
 #define MAX_SPRITES_PER_LINE 96
 #define MAX_SPRITES 381
@@ -77,6 +78,24 @@ static int sprite_on_scanline(int scanline, int y, int rows)
            ((max_y < y) && ((scanline >= y) || (scanline <= max_y)));
 }
 
+/* one scanline of a replacement image scaled to the frame's box (16w x 16h pixels at x, y), with its flips */
+static void draw_replacement(const spr_block *b, int scanline, int y, int x, uint32_t *line)
+{
+    int bw = 16 * b->w, bh = 16 * b->h;
+    int py = (scanline - y) & 0x1ff;
+    if (py >= bh) return;
+    const spr_image *im = b->img;
+    int iy = ((b->flips & 2) ? bh - 1 - py : py) * im->h / bh;
+    const uint8_t *row = im->rgba + (size_t)iy * im->w * 4;
+    for (int px = 0; px < bw; px++) {
+        int sx = (x + px) & 0x1ff;
+        if (sx >= NG_SCREEN_W) continue;
+        int ix = ((b->flips & 1) ? bw - 1 - px : px) * im->w / bw;
+        const uint8_t *c = row + ix * 4;
+        if (c[3] >= 128) line[sx] = 0xff000000u | (uint32_t)c[0] << 16 | (uint32_t)c[1] << 8 | c[2];
+    }
+}
+
 static void draw_sprites(int scanline, uint32_t *line, const uint32_t *pens)
 {
     const uint16_t *vram = ng.vram;
@@ -110,8 +129,13 @@ static void draw_sprites(int scanline, uint32_t *line, const uint32_t *pens)
             zoom_x = (zc >> 8) & 0x0f;
             rows = yc & 0x3f;
         }
-        if (x >= 0x140 && x <= 0x1f0) continue;
         if (!sprite_on_scanline(scanline, y, rows)) continue;
+        const spr_block *rb = spr_native_block(sn);
+        if (rb && zoom_y == 0xff && zoom_x == 0x0f) {     /* remade image for this frame (spr_native.c) */
+            if (sn == rb->first) draw_replacement(rb, scanline, y, x, line);
+            continue;
+        }
+        if (x >= 0x140 && x <= 0x1f0) continue;
 
         int sprite_line = (scanline - y) & 0x1ff;
         int zoom_line = sprite_line & 0xff;

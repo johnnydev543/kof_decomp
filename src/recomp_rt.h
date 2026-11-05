@@ -3,9 +3,13 @@
  * Musashi interpreter can hand over at any instruction boundary. */
 #ifndef RECOMP_RT_H
 #define RECOMP_RT_H
+
 #include <stdint.h>
 #include "m68kcpu.h"
 #include "m68kops.h"
+
+/* native hooks (game.json runtime.hooks): called before the hooked instruction, REG_PC = its address */
+void rt_native_hook(uint32_t pc);
 
 typedef void (*rc_fn)(void);
 typedef struct { void (*fn)(void); uint32_t addr; uint32_t len; } rc_test;

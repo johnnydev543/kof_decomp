@@ -9,6 +9,8 @@
 #include "neogeo.h"
 #include "cpu.h"
 #include "audio.h"
+#include "snd_native.h"
+#include "spr_native.h"
 #include "m68k.h"
 
 static uint32_t fb[NG_SCREEN_W * NG_SCREEN_H];     /* frame buffer (ARGB) */
@@ -49,6 +51,11 @@ static void break_hook(uint32_t pc)
 static void usage(void)
 {
     puts("usage: kof97 [options]\n"
+         "  --native-audio [DIR] play pre-rendered sound files (tools/assets/export_audio.py) instead of\n"
+         "                      emulating the Z80 + YM2610 (default DIR build/assets/kof97/audio)\n"
+         "  --mods DIR          remade assets (sprites/, audio/) that replace the originals (default mods/kof97)\n"
+         "  --sound-log FILE    log every sound command (68k -> Z80) and reply with its frame\n"
+         "  --frame-render      draw each frame at once at the start of VBlank (native renderer reference)\n"
          "  --roms DIR          normalised ROM dir from tools/romprep.py (default build/roms)\n"
          "  --interp            run the 68000 purely on the Musashi interpreter (reference mode)\n"
          "  --headless          no window/audio device; use with --frames\n"
@@ -234,6 +241,25 @@ static void wav_close(void)
     fclose(wavf);
 }
 
+/* ---- --sound-log ---- */
+static const char *sound_log_path;
+static const char *native_audio, *mods_dir = "mods/kof97";
+
+/* audio for one frame: from the emulated driver, or rendered natively (55555 Hz / 59.185 Hz per frame) */
+static int read_audio(int16_t *buf, int max)
+{
+    static double owed; static int given;
+    if (!snd_native_enabled()) return audio_read_samples(buf, max);
+    if (given) { given = 0; return 0; }
+    owed += (double)AUDIO_RATE / NG_FPS;
+    int n = (int)owed; if (n > max) n = max;
+    owed -= n; given = 1;
+    return snd_native_render(buf, n);
+}
+static FILE *sound_log_f;
+static void sound_log_cb(int frame, int dir, uint8_t val) { fprintf(sound_log_f, "%d %s %02x\n", frame, dir ? "reply" : "cmd", val); }
+static void sound_reply_cb(uint8_t val) { if (sound_log_f) fprintf(sound_log_f, "%llu reply %02x\n", (unsigned long long)ng.frame, val); }
+
 /* ---- keyboard / gamepad ---- */
 static uint8_t key_p1, key_p2, key_sys, pad_p[2], pad_sys;
 
@@ -320,7 +346,7 @@ static void frame_step(void)
         ng_run_frame(fb);
         ui.f++;
         int n;
-        while ((n = audio_read_samples(abuf, 8192)) > 0) {
+        while ((n = read_audio(abuf, 8192)) > 0) {
             if (wavf) { fwrite(abuf, 4, (size_t)n, wavf); wav_frames += (uint32_t)n; }
             if (ui.adev) {
                 /* keep latency bounded: drop audio if the queue grows beyond ~150 ms */
@@ -356,6 +382,10 @@ int main(int argc, char **argv)
         const char *v = (i + 1 < argc) ? argv[i + 1] : NULL;
 #define TAKE (v ? (i++, v) : (usage(), exit(1), (const char *)NULL))
         if (!strcmp(a, "--roms")) opt.roms = TAKE;
+        else if (!strcmp(a, "--frame-render")) ng_frame_render = 1;
+        else if (!strcmp(a, "--sound-log")) sound_log_path = TAKE;
+        else if (!strcmp(a, "--native-audio")) native_audio = (i + 1 < argc && argv[i + 1][0] != '-') ? argv[++i] : "build/assets/kof97/audio";
+        else if (!strcmp(a, "--mods")) mods_dir = TAKE;
         else if (!strcmp(a, "--interp")) opt.interp = 1;
         else if (!strcmp(a, "--headless")) opt.headless = 1;
         else if (!strcmp(a, "--frames")) opt.frames = atoi(TAKE);
@@ -401,6 +431,9 @@ int main(int argc, char **argv)
     if (opt.autoplay) build_autoplay();
 
     if (!ng_load_roms(opt.roms)) return 1;
+    if (native_audio && !snd_native_init(native_audio, mods_dir ? mods_dir : "")) return 1;
+    if (mods_dir) spr_native_init(mods_dir);
+    if (sound_log_path && (sound_log_f = fopen(sound_log_path, "w"))) { ng_sound_log = sound_log_cb; audio_set_reply_hook(sound_reply_cb); }
     ng_init(opt.interp ? CPU_MODE_INTERP : CPU_MODE_RECOMP, (opt.misses && *opt.misses) ? opt.misses : NULL);
     if (exec_log) cpu_set_exec_log(exec_log);
     ng_load_nvram(opt.nvram);
@@ -428,7 +461,7 @@ int main(int argc, char **argv)
             if (ram_log && f >= opt.ram_log_from && (opt.ram_log_every <= 1 || (f - opt.ram_log_from) % opt.ram_log_every == 0))
                 fwrite(ng.ram, 1, sizeof ng.ram, ram_log);
             int n;
-            while ((n = audio_read_samples(abuf, 8192)) > 0)
+            while ((n = read_audio(abuf, 8192)) > 0)
                 if (wavf) { fwrite(abuf, 4, (size_t)n, wavf); wav_frames += (uint32_t)n; }
             if (opt.dump_prefix && (f + 1) % opt.dump_every == 0) {
                 char path[512];

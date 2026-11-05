@@ -266,5 +266,25 @@
       "shermie": "oshermie",
       "chris": "ochris"
     }
+  },
+  "sprites": {
+    "_comment": "sprite frame data (tools/assets): cel lists and frame tables per object set (P2 bank 1 addresses), ROM palettes (bank 2), player / effect palette start tables in P1; sets: object types (players 0-31, 32 shared, 33 effects and stages, 34 HUD)",
+    "cel_lists": "200002",
+    "frame_tables": "250000",
+    "rom_palettes": "2cfff0",
+    "player_palettes": "483e",
+    "effect_palettes": "4956",
+    "sets": 35,
+    "set_names": {
+      "32": "shared",
+      "33": "effects",
+      "34": "hud"
+    }
+  },
+  "runtime": {
+    "_comment": "hooks: labels of the assembly source where the runtime calls native code (spr_native.c: sprite replacement)",
+    "hooks": {
+      "L_005d8a": "sprite_cel"
+    }
   }
 }

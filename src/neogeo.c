@@ -6,6 +6,7 @@
 #include <time.h>
 #include "neogeo.h"
 #include "cpu.h"
+#include "snd_native.h"
 #include "audio.h"
 #include "m68k.h"
 
@@ -47,6 +48,15 @@ int ng_load_roms(const char *dir)
 }
 
 /* ------------------------------------------------------------------------------------------ */
+/* REG_SOUND: command bytes to the sound CPU (optionally logged with --sound-log) */
+void (*ng_sound_log)(int frame, int dir, uint8_t val);
+static void sound_command(uint8_t cmd)
+{
+    if (ng_sound_log) ng_sound_log((int)ng.frame, 0, cmd);
+    if (snd_native_enabled()) snd_native_command(cmd);
+    else audio_write_command(cmd);
+}
+
 /* Interrupts and LSPC timer                                                                  */
 /* ------------------------------------------------------------------------------------------ */
 
@@ -246,7 +256,7 @@ static uint8_t io_read8(uint32_t a)
     switch ((a >> 16) & 0xe) {
     case 0x0: if (a & 0x80) return (a & 1) ? reg_systype() : 0xff;
               return (a & 1) ? ng.dipsw : reg_p1();
-    case 0x2: return (a & 1) ? reg_status_a() : audio_read_reply();
+    case 0x2: return (a & 1) ? reg_status_a() : snd_native_enabled() ? snd_native_reply() : audio_read_reply();
     case 0x4: return (a & 1) ? 0xff : reg_p2();
     case 0x8: return (a & 1) ? 0xff : reg_status_b();
     case 0xc: { uint16_t w = lspc_read(a); return (a & 1) ? (uint8_t)w : (uint8_t)(w >> 8); }
@@ -264,7 +274,7 @@ static void io_write(uint32_t a, uint16_t data, int is_byte)
 {
     switch ((a >> 16) & 0xe) {
     case 0x0: if (!is_byte || (a & 1)) ng.watchdog = 0; break;
-    case 0x2: if (!is_byte) audio_write_command((uint8_t)(data >> 8)); else if (!(a & 1)) audio_write_command((uint8_t)data); break;
+    case 0x2: if (!is_byte) sound_command((uint8_t)(data >> 8)); else if (!(a & 1)) sound_command((uint8_t)data); break;
     case 0x8: if (!is_byte || (a & 1)) io_control_w(a | 1, (uint8_t)data); break;
     case 0xa: if (!is_byte || (a & 1)) system_control_w(a | 1); break;
     case 0xc:
@@ -463,6 +473,8 @@ static void run_cycles(int cycles)
     }
 }
 
+int ng_frame_render;        /* 1: render the whole frame at the start of VBlank (--frame-render) */
+
 void ng_run_frame(uint32_t *fb)
 {
     for (int line = 0; line < NG_LINES; line++) {
@@ -475,15 +487,21 @@ void ng_run_frame(uint32_t *fb)
                 ng.auto_anim_frame_counter--;
             }
         }
+        if (line == NG_VBSTART && fb && ng_frame_render) {
+            /* whole-frame rendering: the frame's final state, after the game logic and before the VBlank
+               handler (the native renderer's reference; the per-line renderer also shows mid-frame writes) */
+            for (int l = NG_VBEND; l < NG_VBSTART; l++)
+                video_render_line(l, fb + (l - NG_VBEND) * NG_SCREEN_W);
+        }
         if (line == NG_VBSTART) {
             if (ng.irq2_ctrl & 0x40) { slice_len = 0; timer_reload_now(); }
             ng.irq_vblank = 1;
             update_irq();
         }
-        if (line >= NG_VBEND && line < NG_VBSTART && fb)
+        if (!ng_frame_render && line >= NG_VBEND && line < NG_VBSTART && fb)
             video_render_line(line, fb + (line - NG_VBEND) * NG_SCREEN_W);
         run_cycles(NG_CYCLES_PER_LINE);
-        audio_run(NG_Z80_CYCLES_PER_LINE);
+        if (!snd_native_enabled()) audio_run(NG_Z80_CYCLES_PER_LINE);
     }
     ng.frame++;
 }

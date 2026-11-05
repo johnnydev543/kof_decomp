@@ -28,6 +28,7 @@ import argparse
 import json
 import os
 import struct
+import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -990,6 +991,26 @@ def scan_pointer_seeds(img, valid, known):
     return found
 
 
+HOOKS = set()
+
+
+def resolve_hooks(p1_path):
+    """addresses of the labels in game.json runtime.hooks: from the ELF of the assembled image (the source
+    may have moved them), else the original address in the label name"""
+    labels = game.CFG.get('runtime', {}).get('hooks', {})
+    if not labels:
+        return set()
+    syms = {}
+    elf = os.path.join(os.path.dirname(p1_path), 'p1.elf')
+    nm = next((pre + 'nm' for pre in (os.environ.get('M68K_PREFIX', ''), 'm68k-elf-', 'm68k-linux-gnu-')
+               if pre and shutil.which(pre + 'nm')), None)
+    if os.path.exists(elf) and nm:
+        for line in subprocess.run([nm, elf], capture_output=True, text=True).stdout.splitlines():
+            v, _, n = line.split()
+            syms[n] = int(v, 16)
+    return {syms.get(lab, int(lab[2:], 16)) for lab in labels}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     # the assembly source is the source of truth: translate the image assembled from build/disasm/p1.s
@@ -1064,6 +1085,9 @@ def main():
             seeds.add(lo)
     n_rea = len(seeds)
     print('P1 image: %s' % os.path.relpath(args.p1, ROOT))
+    HOOKS.update(resolve_hooks(args.p1))
+    if HOOKS:
+        print('native hooks: %s' % ', '.join('%x' % h for h in sorted(HOOKS)))
     for path in (args.extra_seeds, args.misses, args.code_map):
         if os.path.exists(path):
             for line in open(path):
@@ -1151,6 +1175,8 @@ def main():
             d = insns[a]
             out.append('L_%x: /* %06x: %s */' % (a, a, d.text.replace('*/', '* /')))
             body = gen_insn(d, ctx, cycles)
+            if a in HOOKS:                        # native hook before this instruction (game.json runtime.hooks)
+                body = ['REG_PC = %s; rt_native_hook(%s);' % (hx(a), hx(a))] + body
             if d.helper:
                 helpers[d.kind] += 1
             else:

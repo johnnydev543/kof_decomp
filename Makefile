@@ -21,7 +21,7 @@ YMFM        := third_party/ymfm/src
 YMFM_OBJ    := $(B)/obj/ymfm_opn.o $(B)/obj/ymfm_adpcm.o $(B)/obj/ymfm_ssg.o $(B)/obj/ymfm_misc.o
 RC_C        := $(foreach i,$(shell seq -w 0 $$(($(NFILES)-1))),$(B)/recomp/rc_$(i).c) $(B)/recomp/rc_table.c
 RC_OBJ      := $(patsubst $(B)/recomp/%.c,$(B)/obj/recomp/%.o,$(RC_C))
-APP_OBJ     := $(B)/obj/main.o $(B)/obj/neogeo.o $(B)/obj/video.o $(B)/obj/cpu.o $(B)/obj/audio.o $(B)/obj/z80.o
+APP_OBJ     := $(B)/obj/main.o $(B)/obj/neogeo.o $(B)/obj/video.o $(B)/obj/cpu.o $(B)/obj/audio.o $(B)/obj/z80.o $(B)/obj/snd_native.o $(B)/obj/spr_native.o
 
 CFLAGS_COMMON := -I$(MUSASHI) -Isrc -Wall
 ROMS := $(B)/roms/p1.bin
@@ -148,6 +148,13 @@ shifttest: $(B)/kof97 $(B)/m68kinfo $(B)/m68k_table.txt
 clean:
 	rm -rf $(B)/obj $(B)/kof97 $(B)/rc_difftest $(B)/recomp/*.c $(RECOMP_STAMP)
 
+# ---- assets for redrawing / remaking (local only: derived from the ROMs) -----------------------
+$(B)/sound_render: tools/assets/sound_render.cpp $(B)/obj/audio.o $(B)/obj/z80.o $(YMFM_OBJ)
+	$(CXX) -std=c++17 $(OPT) -Isrc -o $@ $^ -lm
+assets: $(B)/sound_render $(B)/roms/p1.bin
+	python3 tools/assets/export_sprites.py --composites --sheet
+	python3 tools/assets/export_audio.py
+
 # ---- web build (Emscripten in $(EMSDK)) and the LAN-only development server ------------------
 EMSDK ?= $(HOME)/emsdk
 web: $(RC_C) $(MUSASHI)/m68kops.c $(B)/roms/p1.bin
@@ -157,4 +164,4 @@ WEB_PORT ?= 8097
 serve: web
 	python3 tools/web/serve.py --port $(WEB_PORT) --dir $(B)/web
 
-.PHONY: all rea recomp test clean web serve matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap
+.PHONY: all rea recomp test clean web serve assets matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap

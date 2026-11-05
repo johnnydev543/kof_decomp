@@ -35,6 +35,8 @@ constexpr int SSG_MIX_DEN = 7;
 struct AudioState;
 AudioState *g = nullptr;
 void (*g_reply_hook)(uint8_t) = nullptr;   // survives audio_init/shutdown
+// offline rendering hooks (tools/assets/sound_render.cpp); null in the game
+extern "C" { void (*audio_step_hook)(uint16_t pc) = 0; int (*audio_ym_hook)(int port, uint8_t val) = 0; }
 
 class YmIntf : public ymfm::ymfm_interface {
 public:
@@ -203,6 +205,7 @@ void z80_out(z80 *, uint16_t port, uint8_t val) {
         break;
     case 0x04: case 0x05: case 0x06: case 0x07:
         TRACE("[%10lu] pc=%04X YM w%d %02X\n", (unsigned long)s.cpu.cyc, s.cpu.pc, port & 3, val);
+        if (audio_ym_hook) { int nv = audio_ym_hook(port & 3, val); if (nv < 0) break; val = (uint8_t)nv; }
         s.ym.write(port & 3, val);
         break;
     case 0x08:                         // NMI enable
@@ -320,6 +323,7 @@ extern "C" void audio_run(int z80_cycles) {
             }
             cpu.int_pending = s.irq_line;   // level-triggered INT (IM1 -> RST 38h)
             cpu.int_data = 0xFF;
+            if (audio_step_hook) audio_step_hook(cpu.pc);
             z80_step(&cpu);
         }
 
@@ -366,3 +370,6 @@ extern "C" uint64_t audio_z80_cycles(void) { return g ? (uint64_t)g->cpu.cyc : 0
 extern "C" void audio_set_reply_hook(void (*hook)(uint8_t)) {
     g_reply_hook = hook;
 }
+
+extern "C" uint8_t *audio_z80_ram(void) { return g ? g->ram : 0; }
+extern "C" uint64_t audio_frames_out(void) { return g ? (uint64_t)g->ring_wr : 0; }

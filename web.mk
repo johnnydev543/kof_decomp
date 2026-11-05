@@ -14,7 +14,7 @@ EMFLAGS := -sUSE_SDL=2
 CFLAGS  := -I$(MUSASHI) -Isrc $(EMFLAGS)
 
 RC_C    := $(foreach i,$(shell seq -w 0 $$(($(NFILES)-1))),$(B)/recomp/rc_$(i).c) $(B)/recomp/rc_table.c
-APP_C   := src/main.c src/neogeo.c src/video.c src/cpu.c
+APP_C   := src/main.c src/neogeo.c src/video.c src/cpu.c src/snd_native.c src/spr_native.c
 OBJ     := $(patsubst src/%.c,$(W)/obj/%.o,$(APP_C)) \
            $(W)/obj/z80.o $(W)/obj/audio.o \
            $(W)/obj/m68kcpu.o $(W)/obj/m68kops.o $(W)/obj/m68kdasm.o $(W)/obj/softfloat.o \
@@ -55,4 +55,5 @@ $(W)/roms/.stamp: $(addprefix $(B)/roms/,$(ROMFILES))
 $(W)/index.html: $(OBJ) $(W)/roms/.stamp web/shell.html
 	em++ $(OPT) -o $@ $(OBJ) $(EMFLAGS) -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=268435456 \
 	    -sSTACK_SIZE=1048576 --shell-file web/shell.html \
-	    --preload-file $(W)/roms@/build/roms --exclude-file '*/.stamp'
+	    --preload-file $(W)/roms@/build/roms --exclude-file '*/.stamp' \
+	    $(if $(wildcard mods/kof97),--preload-file mods/kof97@/mods/kof97)
