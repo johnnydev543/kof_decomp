@@ -58,7 +58,8 @@ static void usage(void)
          "  --aes               home (AES) mode: mode select menu, options, no coins\n"
          "  --gpu               draw with OpenGL at the window's resolution (remade sprites at full detail)\n"
          "  --keys FILE         key bindings: lines 'action=Key Name' (actions p1_up .. p1_d, p2_up .. p2_d,\n"
-         "                      p1_start, p2_start, p1_coin, p2_coin, service, test; SDL key names)\n"
+         "                      p1_start, p2_start, p1_coin, p2_coin, service, test; SDL key names;\n"
+         "                      gamepad: pad_a .. pad_d, pad_start, pad_coin = SDL button names a, b, x, y, ...)\n"
          "  --print-keys        print the key bindings in --keys format (after any --keys) and exit\n"
          "  --sound-log FILE    log every sound command (68k -> Z80) and reply with its frame\n"
          "  --hd S              render at S x resolution (remade sprites keep their detail; implies --frame-render)\n"
@@ -217,6 +218,7 @@ static void script_input(int frame, uint8_t *p1, uint8_t *p2, uint8_t *sys)
 }
 
 static int use_gpu;
+static int web_worklet;          /* web page with an AudioWorklet: audio goes to Module.audioPush */
 
 static void write_ppm_buf(const char *path, const uint32_t *fb, int w, int h)
 {
@@ -299,7 +301,19 @@ static keybind keymap[] = {
     { "service", &key_sys, NG_SYS_SERVICE, SDLK_9, SDLK_9 }, { "test", &key_sys, NG_SYS_TEST, SDLK_F2, SDLK_F2 },
 };
 #define NKEYS (int)(sizeof keymap / sizeof keymap[0])
-static int key_learn = -1;               /* action waiting for a key (web key settings) */
+/* gamepad buttons (both pads; pad 1 plays P1, pad 2 P2; directions: d-pad or left stick) */
+typedef struct { const char *name; uint8_t bit; int sys; SDL_GameControllerButton button, def; } padbind;
+static padbind padmap[] = {
+    { "pad_a", NG_A, 0, SDL_CONTROLLER_BUTTON_A, SDL_CONTROLLER_BUTTON_A },
+    { "pad_b", NG_B, 0, SDL_CONTROLLER_BUTTON_B, SDL_CONTROLLER_BUTTON_B },
+    { "pad_c", NG_C, 0, SDL_CONTROLLER_BUTTON_X, SDL_CONTROLLER_BUTTON_X },
+    { "pad_d", NG_D, 0, SDL_CONTROLLER_BUTTON_Y, SDL_CONTROLLER_BUTTON_Y },
+    { "pad_start", NG_SYS_START1, 1, SDL_CONTROLLER_BUTTON_START, SDL_CONTROLLER_BUTTON_START },
+    { "pad_coin", NG_SYS_COIN1, 1, SDL_CONTROLLER_BUTTON_BACK, SDL_CONTROLLER_BUTTON_BACK },
+};
+#define NPAD (int)(sizeof padmap / sizeof padmap[0])
+static int key_learn = -1;               /* action waiting for a key or pad button (web key settings);
+                                            >= NKEYS: padmap[key_learn - NKEYS] */
 
 static int key_reserved(SDL_Keycode k) { return k == SDLK_ESCAPE || k == SDLK_p || k == SDLK_F3 || k == SDLK_F12; }
 
@@ -316,7 +330,16 @@ static int bind_key(int a, SDL_Keycode k)
 static int action_index(const char *name)
 {
     for (int i = 0; i < NKEYS; i++) if (!strcmp(keymap[i].name, name)) return i;
+    for (int i = 0; i < NPAD; i++) if (!strcmp(padmap[i].name, name)) return NKEYS + i;
     return -1;
+}
+
+static int bind_pad(int a, SDL_GameControllerButton b)
+{
+    if (a < 0 || a >= NPAD || b == SDL_CONTROLLER_BUTTON_INVALID) return 0;
+    for (int i = 0; i < NPAD; i++) if (i != a && padmap[i].button == b) padmap[i].button = padmap[a].button;
+    padmap[a].button = b;
+    return 1;
 }
 
 /* "action=Key Name" items separated by newlines or ';' (SDL key names, e.g. "W", "Up", "Keypad 1");
@@ -329,7 +352,11 @@ static int set_keys(const char *spec)
     for (char *item = strtok(buf, ";\n"); item; item = strtok(NULL, ";\n")) {
         while (*item == ' ' || *item == '\t') item++;
         if (!*item || *item == '#') continue;
-        if (!strcmp(item, "default")) { for (int i = 0; i < NKEYS; i++) keymap[i].key = keymap[i].def; continue; }
+        if (!strcmp(item, "default")) {
+            for (int i = 0; i < NKEYS; i++) keymap[i].key = keymap[i].def;
+            for (int i = 0; i < NPAD; i++) padmap[i].button = padmap[i].def;
+            continue;
+        }
         char *eq = strchr(item, '=');
         if (!eq) continue;
         *eq = 0;
@@ -338,7 +365,7 @@ static int set_keys(const char *spec)
         char *ve = v + strlen(v); while (ve > v && (ve[-1] == ' ' || ve[-1] == '\r')) *--ve = 0;
         int a = action_index(item);
         if (a < 0) { fprintf(stderr, "keys: unknown action '%s'\n", item); continue; }
-        if (bind_key(a, SDL_GetKeyFromName(v))) n++;
+        if (a >= NKEYS ? bind_pad(a - NKEYS, SDL_GameControllerGetButtonFromString(v)) : bind_key(a, SDL_GetKeyFromName(v))) n++;
         else fprintf(stderr, "keys: cannot bind %s to '%s'\n", item, v);
     }
     return n;
@@ -350,6 +377,8 @@ static const char *get_keys(void)
     size_t o = 0;
     for (int i = 0; i < NKEYS; i++)
         o += (size_t)snprintf(out + o, sizeof out - o, "%s=%s;", keymap[i].name, SDL_GetKeyName(keymap[i].key));
+    for (int i = 0; i < NPAD; i++)
+        o += (size_t)snprintf(out + o, sizeof out - o, "%s=%s;", padmap[i].name, SDL_GameControllerGetStringForButton(padmap[i].button));
     return out;
 }
 
@@ -364,6 +393,13 @@ static void handle_key(SDL_Keycode k, int down)
 EMSCRIPTEN_KEEPALIVE int kof_set_keys(const char *spec) { return set_keys(spec); }
 EMSCRIPTEN_KEEPALIVE const char *kof_get_keys(void) { return get_keys(); }
 EMSCRIPTEN_KEEPALIVE void kof_learn_key(const char *action) { key_learn = action ? action_index(action) : -1; }
+/* on-screen touch buttons: press / release a keyboard action */
+EMSCRIPTEN_KEEPALIVE void kof_touch(const char *action, int down)
+{
+    int a = action_index(action);
+    if (a < 0 || a >= NKEYS) return;
+    if (down) *keymap[a].dst |= keymap[a].bit; else *keymap[a].dst &= (uint8_t)~keymap[a].bit;
+}
 #endif
 
 static void poll_pads(SDL_GameController **pads)
@@ -378,13 +414,13 @@ static void poll_pads(SDL_GameController **pads)
         if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_DOWN) || ay > 16000) v |= NG_DOWN;
         if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_LEFT) || ax < -16000) v |= NG_LEFT;
         if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) || ax > 16000) v |= NG_RIGHT;
-        if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_A)) v |= NG_A;
-        if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_B)) v |= NG_B;
-        if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_X)) v |= NG_C;
-        if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_Y)) v |= NG_D;
+        for (int b = 0; b < NPAD; b++) {
+            if (!SDL_GameControllerGetButton(c, padmap[b].button)) continue;
+            if (!padmap[b].sys) v |= padmap[b].bit;
+            else if (padmap[b].bit == NG_SYS_START1) pad_sys |= i ? NG_SYS_START2 : NG_SYS_START1;
+            else pad_sys |= i ? NG_SYS_COIN2 : NG_SYS_COIN1;
+        }
         pad_p[i] = v;
-        if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_START)) pad_sys |= i ? NG_SYS_START2 : NG_SYS_START1;
-        if (SDL_GameControllerGetButton(c, SDL_CONTROLLER_BUTTON_BACK)) pad_sys |= i ? NG_SYS_COIN2 : NG_SYS_COIN1;
     }
 }
 
@@ -415,11 +451,12 @@ static void frame_step(void)
             SDL_Keycode k = ev.key.keysym.sym;
             if (key_learn >= 0) {               /* web key settings: this key goes to the chosen action */
                 if (down && !ev.key.repeat) {
-                    int a = key_learn, ok = bind_key(a, k);
+                    int a = key_learn, ok = a < NKEYS && bind_key(a, k);     /* a pad action: any key cancels */
                     key_learn = -1;
                     (void)ok;
 #ifdef __EMSCRIPTEN__
-                    EM_ASM({ if (Module.onKeyBound) Module.onKeyBound(UTF8ToString($0), $1); }, keymap[a].name, ok);
+                    EM_ASM({ if (Module.onKeyBound) Module.onKeyBound(UTF8ToString($0), $1); },
+                           a < NKEYS ? keymap[a].name : padmap[a - NKEYS].name, ok);
 #endif
                 }
             }
@@ -430,6 +467,13 @@ static void frame_step(void)
                 char path[64]; snprintf(path, sizeof path, "kof97_shot_%03d.ppm", ui.shot++); write_ppm(path, fb);
             }
             else handle_key(k, down);
+        } else if (ev.type == SDL_CONTROLLERBUTTONDOWN && key_learn >= NKEYS) {   /* pad button for a pad action */
+            int a = key_learn, ok = bind_pad(a - NKEYS, (SDL_GameControllerButton)ev.cbutton.button);
+            key_learn = -1;
+            (void)ok;
+#ifdef __EMSCRIPTEN__
+            EM_ASM({ if (Module.onKeyBound) Module.onKeyBound(UTF8ToString($0), $1); }, padmap[a - NKEYS].name, ok);
+#endif
         } else if (ev.type == SDL_CONTROLLERDEVICEADDED && ui.npad < 2) {
             ui.pads[ui.npad++] = SDL_GameControllerOpen(ev.cdevice.which);
         }
@@ -445,6 +489,9 @@ static void frame_step(void)
         int n;
         while ((n = read_audio(abuf, 8192)) > 0) {
             if (wavf) { fwrite(abuf, 4, (size_t)n, wavf); wav_frames += (uint32_t)n; }
+#ifdef __EMSCRIPTEN__
+            if (web_worklet) EM_ASM({ Module.audioPush(HEAP16.subarray($0 >> 1, ($0 >> 1) + $1 * 2)); }, abuf, n);
+#endif
             if (ui.adev) {
                 /* keep latency bounded: drop audio if the queue grows beyond ~150 ms */
                 if (SDL_GetQueuedAudioSize(ui.adev) > (Uint32)(AUDIO_RATE * 4 * 15 / 100)) SDL_ClearQueuedAudio(ui.adev);
@@ -654,9 +701,15 @@ int main(int argc, char **argv)
 
     SDL_AudioSpec want = { 0 }, have;
     want.freq = AUDIO_RATE; want.format = AUDIO_S16SYS; want.channels = 2; want.samples = 1024;
-    SDL_AudioDeviceID adev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-    if (!adev) fprintf(stderr, "no audio: %s\n", SDL_GetError());
-    else SDL_PauseAudioDevice(adev, 0);
+    SDL_AudioDeviceID adev = 0;
+#ifdef __EMSCRIPTEN__
+    web_worklet = EM_ASM_INT({ return Module.audioPush ? 1 : 0; });   /* the page plays it (AudioWorklet) */
+#endif
+    if (!web_worklet) {
+        adev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+        if (!adev) fprintf(stderr, "no audio: %s\n", SDL_GetError());
+        else SDL_PauseAudioDevice(adev, 0);
+    }
 
     SDL_GameController *pads[2] = { 0 };
     int npad = 0;

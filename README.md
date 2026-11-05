@@ -44,7 +44,10 @@ make codecheck      # code still emitted as data / bad character labels
 
 Keys: P1 `W S A D` + `J K U I` (A B C D), P2 arrows + keypad `1 2 4 5`, coin `5`/`6`, start `1`/`2`.
 Rebind with `--keys FILE` (`action=Key Name` lines; `--print-keys` prints the current set), or with
-*Key settings* on the web page (saved in the browser).
+*Key settings* on the web page (saved in the browser). Gamepads: d-pad / left stick, buttons A B X Y = A B C D,
+Start, Back = coin; the buttons can be rebound the same way (`pad_a=x` ...). The web page shows touch controls
+on touch screens (or with *Touch controls* / `?touch=1`), and plays audio through an AudioWorklet where the
+browser allows it (https or localhost; plain-http LAN addresses keep SDL's audio).
 
 Arcade (MVS) mode by default: `F2` opens the BIOS menu, whose *soft DIP* page sets play speed, continue,
 difficulty (1-8), single or team play, blood colour and more (kept in `kof97.nvram`; on the web page, in the

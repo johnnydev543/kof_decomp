@@ -194,7 +194,10 @@ make test                        # 重編譯指令 vs Musashi 差分測試
 按鍵：P1 `W S A D` + `J K U I`（A B C D）；P2 方向鍵 + 數字鍵盤 `1 2 4 5`；`1`/`2` 開始；`5`/`6` 投幣；`9` service；
 `F2` 測試模式；`F3` 重置；`P` 暫停；`F12` 截圖；`Esc` 離開。支援 SDL GameController（Back = 投幣、Start = 開始）。
 自訂按鍵：`--keys FILE`（每行 `動作=SDL 鍵名`，`--print-keys` 印出目前設定當範本）；Web 版用頁面上的
-「Key settings」，點動作後按下新鍵，存在瀏覽器 localStorage（同一個鍵會和原本的動作互換）。
+「Key settings」，點動作後按下新鍵，存在瀏覽器 localStorage（同一個鍵會和原本的動作互換）。手把：十字鍵 /
+左搖桿，`pad_a`..`pad_d`、`pad_start`、`pad_coin` 可改（SDL 按鈕名，兩支手把共用；第 2 支 = P2）。Web 版觸控按鈕
+（觸控裝置自動顯示或 `?touch=1`）呼叫 `kof_touch()`；安全環境（https / localhost）下聲音走 AudioWorklet
+（`Module.audioPush`），LAN 的 http 位址不是安全環境，維持 SDL 的 ScriptProcessor。
 
 街機（MVS）模式下 `F2` 進 BIOS 選單，SOFT DIP 頁可調遊戲速度、接關、難度 1–8、單人 / 組隊、血色等（存在
 `kof97.nvram`；Web 版存在瀏覽器 localStorage）。`--aes`（Web：`?aes=1`）= 家用卡匣模式：BIOS 做完 RAM 測試、

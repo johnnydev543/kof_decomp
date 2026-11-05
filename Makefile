@@ -142,6 +142,9 @@ codecheck:
 # specmap: regenerate games/$(GAME)/symbols/specials.txt (character code by command motion)
 specmap: $(B)/kof97 $(B)/m68kinfo $(B)/m68k_table.txt
 	python3 tools/disasm/specmap.py
+# rendertest: the exported frames used as their own replacements give the original picture (needs `make assets`)
+rendertest: $(B)/kof97
+	python3 tools/assets/rendertest.py
 shifttest: $(B)/kof97 $(B)/m68kinfo $(B)/m68k_table.txt
 	python3 tools/disasm/shifttest.py --all
 
@@ -166,4 +169,4 @@ WEB_PORT ?= 8097
 serve: web
 	python3 tools/web/serve.py --port $(WEB_PORT) --dir $(B)/web
 
-.PHONY: all rea recomp test clean web serve assets audio-ogg matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap
+.PHONY: all rea recomp test clean web serve assets audio-ogg rendertest matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap

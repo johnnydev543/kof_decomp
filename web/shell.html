@@ -20,6 +20,18 @@
   #keypanel td button { min-width: 90px; }
   #keypanel button.learn { border-color: #e0b040; color: #e0b040; }
   #keytools { display: flex; gap: 8px; align-items: center; }
+  /* on-screen controls for touch screens */
+  #touch { display: none; width: min(96vw, 1280px); justify-content: space-between; align-items: center;
+           user-select: none; -webkit-user-select: none; touch-action: none; }
+  #touch.on { display: flex; }
+  #dpad { width: 150px; height: 150px; border-radius: 50%; background: #1c1c1c; border: 2px solid #444; position: relative; }
+  #dpad::after { content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px; border-radius: 50%; background: #333; }
+  #tbtns { display: grid; grid-template-columns: repeat(2, 64px); gap: 12px; }
+  #tsys { display: flex; flex-direction: column; gap: 10px; }
+  .tb { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #555; background: #222; color: #ddd;
+        font: bold 20px system-ui, sans-serif; display: flex; align-items: center; justify-content: center; }
+  .tb.small { width: 64px; height: 34px; border-radius: 8px; font-size: 13px; }
+  .tb.held, #dpad.held { border-color: #e0b040; }
 </style>
 </head>
 <body>
@@ -27,7 +39,13 @@
   <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
   <div id="status">Loading...</div>
   <div id="keys"></div>
-  <div id="keytools"><button id="keybtn">Key settings</button></div>
+  <div id="touch">
+    <div id="dpad"></div>
+    <div id="tsys"><div class="tb small" data-action="p1_coin">COIN</div><div class="tb small" data-action="p1_start">START</div></div>
+    <div id="tbtns"><div class="tb" data-action="p1_c">C</div><div class="tb" data-action="p1_d">D</div>
+                    <div class="tb" data-action="p1_a">A</div><div class="tb" data-action="p1_b">B</div></div>
+  </div>
+  <div id="keytools"><button id="keybtn">Key settings</button><button id="touchbtn">Touch controls</button></div>
   <div id="keypanel"></div>
 </div>
 <script>
@@ -65,6 +83,7 @@
       } catch (e) {}
     },
     onRuntimeInitialized: function () {
+      runtimeReady = true;
       try { var saved = localStorage.getItem(KEY_STORE); if (saved) Module.ccall('kof_set_keys', 'number', ['string'], [saved]); } catch (e) {}
       showKeys();
       canvas.focus();
@@ -78,11 +97,12 @@
   };
 
   /* key settings: click an action, then press the key for it (bound by the game itself, saved in this browser) */
-  var KEY_STORE = 'kof97.keys', NVRAM_STORE = 'kof97.nvram', learning = null;
+  var KEY_STORE = 'kof97.keys', NVRAM_STORE = 'kof97.nvram', learning = null, runtimeReady = false;
   var GROUPS = [
     ['Player 1', ['p1_up', 'p1_down', 'p1_left', 'p1_right', 'p1_a', 'p1_b', 'p1_c', 'p1_d', 'p1_start', 'p1_coin']],
     ['Player 2', ['p2_up', 'p2_down', 'p2_left', 'p2_right', 'p2_a', 'p2_b', 'p2_c', 'p2_d', 'p2_start', 'p2_coin']],
-    ['System', ['service', 'test']]
+    ['System', ['service', 'test']],
+    ['Gamepad', ['pad_a', 'pad_b', 'pad_c', 'pad_d', 'pad_start', 'pad_coin']]
   ];
   var LABEL = { up: 'Up', down: 'Down', left: 'Left', right: 'Right', a: 'A', b: 'B', c: 'C', d: 'D',
                 start: 'Start', coin: 'Coin', service: 'Service', test: 'Test' };
@@ -106,12 +126,13 @@
     GROUPS.forEach(function (g) {
       html += '<table><tr><th colspan="2">' + g[0] + '</th></tr>';
       g[1].forEach(function (a) {
-        var name = LABEL[a.replace(/^p[12]_/, '')] || a;
+        var name = LABEL[a.replace(/^(p[12]|pad)_/, '')] || a;
         html += '<tr><td>' + name + '</td><td><button data-action="' + a + '"' + (learning === a ? ' class="learn">press a key...' : '>' + esc(k[a] || '?')) + '</button></td></tr>';
       });
       html += '</table>';
     });
-    html += '<div><button id="keyreset">Reset to defaults</button><br><small>Esc cancels. P, F3, F12 and Esc are reserved.</small></div>';
+    html += '<div><button id="keyreset">Reset to defaults</button><br><small>Esc cancels. P, F3, F12 and Esc are reserved.<br>' +
+            'Gamepad: press a button on the pad (both pads; pad 2 plays P2).</small></div>';
     panel.innerHTML = html;
   }
   document.getElementById('keybtn').addEventListener('click', function () {
@@ -128,15 +149,91 @@
       Module.ccall('kof_learn_key', null, ['string'], [null]);
     } else {
       learning = b.dataset.action;
+    if (learning.indexOf('pad_') === 0) canvas.blur();      /* keys typed now only cancel */
       Module.ccall('kof_learn_key', null, ['string'], [learning]);
     }
     showKeys();
     canvas.focus();                             /* the game reads the keyboard */
   });
+
+  /* touch controls (shown on touch screens, or with ?touch=1 / the button): press / release game actions */
+  var touchEl = document.getElementById('touch');
+  function touch(action, down) { if (runtimeReady) Module.ccall('kof_touch', null, ['string', 'number'], [action, down ? 1 : 0]); }
+  if (new URLSearchParams(location.search).get('touch') === '1' || matchMedia('(pointer: coarse)').matches) touchEl.classList.add('on');
+  document.getElementById('touchbtn').addEventListener('click', function () { touchEl.classList.toggle('on'); canvas.focus(); });
+  Array.prototype.forEach.call(document.querySelectorAll('#touch .tb'), function (el) {
+    var held = {};
+    function upd() { var on = Object.keys(held).length > 0; el.classList.toggle('held', on); touch(el.dataset.action, on); }
+    el.addEventListener('pointerdown', function (e) { e.preventDefault(); el.setPointerCapture(e.pointerId); held[e.pointerId] = 1; upd(); });
+    ['pointerup', 'pointercancel'].forEach(function (t) { el.addEventListener(t, function (e) { delete held[e.pointerId]; upd(); }); });
+  });
+  (function () {                                /* d-pad: direction from the centre, 8 ways */
+    var pad = document.getElementById('dpad'), cur = {}, id = null;
+    function set(dirs) {
+      ['up', 'down', 'left', 'right'].forEach(function (d) {
+        var on = dirs.indexOf(d) >= 0;
+        if (!!cur[d] !== on) { cur[d] = on; touch('p1_' + d, on); }
+      });
+      pad.classList.toggle('held', dirs.length > 0);
+    }
+    function at(e) {
+      var r = pad.getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2;
+      if (x * x + y * y < 15 * 15) return set([]);
+      var a = Math.atan2(y, x) * 180 / Math.PI, d = [];         /* 0 = right, 90 = down */
+      if (a > -67.5 && a < 67.5) d.push('right');
+      if (a > 112.5 || a < -112.5) d.push('left');
+      if (a > 22.5 && a < 157.5) d.push('down');
+      if (a < -22.5 && a > -157.5) d.push('up');
+      set(d);
+    }
+    pad.addEventListener('pointerdown', function (e) { e.preventDefault(); id = e.pointerId; pad.setPointerCapture(id); at(e); });
+    pad.addEventListener('pointermove', function (e) { if (e.pointerId === id) at(e); });
+    ['pointerup', 'pointercancel'].forEach(function (t) { pad.addEventListener(t, function (e) { if (e.pointerId === id) { id = null; set([]); } }); });
+  })();
+  /* Audio through an AudioWorklet (off the main thread) where the browser allows it: secure contexts only
+     (https or localhost; a plain-http LAN address keeps SDL's ScriptProcessor). The game hands each frame's
+     samples (55555 Hz stereo) to Module.audioPush; the worklet keeps up to ~150 ms and resamples linearly to
+     the device rate. ?worklet=0 keeps SDL's audio. */
+  (function () {
+    if (!window.isSecureContext || typeof AudioWorkletNode === 'undefined' ||
+        new URLSearchParams(location.search).get('worklet') === '0') return;
+    var src = [
+      'class KofAudio extends AudioWorkletProcessor {',
+      '  constructor() { super(); this.buf = new Float32Array(65536 * 2); this.w = 0; this.r = 0; this.peak = 0; this.n = 0;',
+      '    this.step = 55555 / sampleRate;',
+      '    this.port.onmessage = (e) => { const d = e.data, N = 65536;',
+      '      for (let i = 0; i < d.length; i += 2) { const k = (this.w % N) * 2; this.buf[k] = d[i]; this.buf[k + 1] = d[i + 1]; this.w++; }',
+      '      if (this.w - this.r > 55555 * 0.15) this.r = this.w - 55555 * 0.05; }; }',
+      '  process(inputs, outputs) { const L = outputs[0][0], R = outputs[0][1] || outputs[0][0], N = 65536;',
+      '    for (let i = 0; i < L.length; i++) {',
+      '      if (this.r + 1 >= this.w) { L[i] = R[i] = 0; continue; }',
+      '      const p = Math.floor(this.r), f = this.r - p, a = (p % N) * 2, b = ((p + 1) % N) * 2;',
+      '      L[i] = this.buf[a] + (this.buf[b] - this.buf[a]) * f; R[i] = this.buf[a + 1] + (this.buf[b + 1] - this.buf[a + 1]) * f;',
+      '      this.peak = Math.max(this.peak, Math.abs(L[i])); this.r += this.step; }',
+      '    if (++this.n % 200 === 0) { this.port.postMessage({ peak: this.peak, queued: this.w - this.r, got: this.w }); this.peak = 0; }',
+      '    return true; } }',
+      'registerProcessor("kof-audio", KofAudio);'].join('\n');
+    var ctx = new AudioContext({ latencyHint: 'interactive' }), node = null, pending = [];
+    ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([src], { type: 'application/javascript' }))).then(function () {
+      node = new AudioWorkletNode(ctx, 'kof-audio', { outputChannelCount: [2] });
+      node.port.onmessage = function (e) { window.kofAudioStats = e.data; };   /* peak, queued and received samples */
+      node.connect(ctx.destination);
+      window.kofAudioNode = node;
+    }).catch(function (e) { console.warn('audio worklet: ' + e); });
+    window.kofAudioContext = ctx;
+    Module.audioPush = function (s16) {
+      if (!node) return;
+      var f = new Float32Array(s16.length);
+      for (var i = 0; i < s16.length; i++) f[i] = s16[i] / 32768;
+      node.port.postMessage(f, [f.buffer]);
+    };
+  })();
+
   /* browsers start audio only after a user gesture */
   ['click', 'keydown'].forEach(function (ev) {
     window.addEventListener(ev, function () {
       if (typeof SDL2 !== 'undefined' && SDL2.audioContext && SDL2.audioContext.state === 'suspended') SDL2.audioContext.resume();
+      if (window.kofAudioContext && window.kofAudioContext.state === 'suspended') window.kofAudioContext.resume();
     });
   });
 </script>
