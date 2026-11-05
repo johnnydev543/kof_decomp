@@ -97,7 +97,7 @@ struct spr_block;
 typedef struct { const struct spr_block *b; int x0, y0, zoom_x, zoom_y; float scale_x, scale_y; uint32_t fill; } video_rec;
 void video_render_frame(uint32_t *fb);                             /* tagged 1x frame (visible lines) */
 void video_compose(const uint32_t *fb, uint32_t *out, int scale);   /* tagged frame -> colours, S x S */
-int  video_recs(const video_rec **recs, const uint32_t **under);    /* this frame's replacements */
+int  video_recs(const video_rec **recs, const uint32_t **under, const uint32_t **delta);   /* this frame's replacements */
 extern uint32_t *ng_hd_fb;      /* when set: --frame-render composes at ng_hd_scale x into it */
 extern int ng_hd_scale;
 extern int ng_tagged;           /* frame-render keeps fb tagged (the GPU output composes it) */

@@ -6,7 +6,10 @@
  * tools/assets/export_sprites.py), its size in tiles and its flips. The renderer (video.c) then draws
  * mods/<game>/sprites/<key>.png, scaled to the frame's box, in place of those sprites' tiles; frames without
  * a replacement are drawn from the tiles as before. The game redraws every visible object each frame, so a
- * record older than two frames is ignored (the sprites may have been reused by other code). */
+ * record older than two frames is ignored (the sprites may have been reused by other code).
+ * Each record also holds the palette the frame was exported with (the same choice as export_sprites.py:
+ * a player's default colour set for the character's frames, a grey ramp for everything else), so the
+ * renderer can follow palette changes. */
 #include "spr_native.h"
 #include "neogeo.h"
 #include "m68k.h"
@@ -20,6 +23,13 @@
 #include "../third_party/stb/stb_image.h"
 
 #define A5 0x108000u
+/* sprite data (games/kof97/game.json "sprites"): frame tables (P2 bank 1), ROM palettes (P2 bank 2),
+   player / effect palette start tables (P1) */
+#define FRAME_TABLES 0x250000u
+#define ROM_PALETTES 0x2cfff0u
+#define PLAYER_PALETTES 0x483eu
+#define EFFECT_PALETTES 0x4956u
+#define NSETS 35
 #define NSPR 448
 #define CACHE 8192
 
@@ -37,8 +47,39 @@ unsigned int m68k_read_memory_8(unsigned int a);
 unsigned int m68k_read_memory_16(unsigned int a);
 unsigned int m68k_read_memory_32(unsigned int a);
 
+static uint32_t set_tables[NSETS];        /* frame table of each object set */
+
+static uint32_t p2_off(uint32_t addr, int bank) { return addr - 0x200000u + (uint32_t)bank * 0x100000u; }
+static unsigned rd8(const ng_blob *b, uint32_t o) { return o < b->size ? b->data[o] : 0; }
+static unsigned rd16(const ng_blob *b, uint32_t o) { return rd8(b, o) << 8 | rd8(b, o + 1); }
+static uint32_t rd32(const ng_blob *b, uint32_t o) { return (uint32_t)rd16(b, o) << 16 | rd16(b, o + 2); }
+
+static uint32_t ng_colour(unsigned d)
+{
+    int dark = d >> 15;
+    int r = ((d >> 14) & 1) | ((d >> 7) & 0x1e), g = ((d >> 13) & 1) | ((d >> 3) & 0x1e), b = ((d >> 12) & 1) | ((d << 1) & 0x1e);
+    r = ((r << 1) | !dark) * 255 / 63; g = ((g << 1) | !dark) * 255 / 63; b = ((b << 1) | !dark) * 255 / 63;
+    return 0xff000000u | (uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b;
+}
+
+/* the palette export_sprites.py drew the frame with: object set from its frame table, palette byte from
+   the frame header (0x10-0x1f character colours, 0x20-0x2f character effects, colour set 0) */
+static void ref_palette(uint32_t table, uint32_t key, uint32_t *ref)
+{
+    int set = -1;
+    for (int i = 0; i < NSETS; i++) if (set_tables[i] == table) { set = i; break; }
+    unsigned pal = rd8(&ngr.p2, p2_off(key, 1));
+    int n = -1;
+    if (set >= 0 && set < 32 && pal >= 0x10 && pal < 0x20) n = (int)rd16(&ngr.p1, PLAYER_PALETTES + (uint32_t)set * 8) + (int)pal - 0x10;
+    if (set >= 0 && set < 32 && pal >= 0x20 && pal < 0x30) n = (int)rd16(&ngr.p1, EFFECT_PALETTES + (uint32_t)set * 2) + (int)pal - 0x20;
+    for (int i = 0; i < 16; i++)
+        ref[i] = n < 0 ? 0xff000000u | (uint32_t)(i * 17) * 0x010101u
+                       : ng_colour(rd16(&ngr.p2, p2_off(ROM_PALETTES, 2) + (uint32_t)n * 32 + (uint32_t)i * 2));
+}
+
 int spr_native_init(const char *mods_dir)
 {
+    for (int i = 0; i < NSETS; i++) set_tables[i] = rd32(&ngr.p2, p2_off(FRAME_TABLES + (uint32_t)i * 4, 1));
     snprintf(sprite_dir, sizeof sprite_dir, "%s/sprites", mods_dir);
     for (int i = 0; i < NSPR; i++) owner[i] = -1;
     enabled = 1;
@@ -82,6 +123,7 @@ static void sprite_cel(void)
         return;
     }
     spr_block *b = &blocks[first];
+    if (b->img != img || b->key != key || !b->ref[0]) ref_palette(table, key, b->ref);
     b->key = key; b->first = first; b->w = w; b->h = h;
     b->flips = m68k_read_memory_8(A5 + 0x64ea) & 3;
     b->img = img;

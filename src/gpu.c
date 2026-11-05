@@ -1,7 +1,7 @@
 /* GPU output (--gpu, web ?gpu=1): the tagged 1x frame (video.c) is drawn by a fragment shader at the window's
  * resolution. Plain pixels keep their colour (sharp, nearest); a tagged pixel samples its replacement image
- * (bilinear, premultiplied alpha) at the output pixel's exact position in the frame's box and blends it over
- * the colour below. Replacement images live in one atlas texture; this frame's records go to a small data
+ * (bilinear for images larger than the frame's box, nearest for original-resolution art; premultiplied alpha) at the output pixel's exact position in the frame's box, shifts it by the
+ * palette change at that pixel, and blends it over the colour below. Replacement images live in one atlas texture; this frame's records go to a small data
  * texture. OpenGL 2.1 / WebGL 1 (GLSL ES 1.00 subset), so the same code runs on Linux, macOS and the web. */
 #include "gpu.h"
 #include "neogeo.h"
@@ -21,8 +21,8 @@
 
 static SDL_Window *win;
 static SDL_GLContext ctx;
-static GLuint prog, vbo, tex_frame, tex_under, tex_recs, tex_atlas;
-static GLint u_frame, u_under, u_recs, u_atlas, u_atlas_size, u_shadow, a_pos;
+static GLuint prog, vbo, tex_frame, tex_under, tex_delta, tex_recs, tex_atlas;
+static GLint u_frame, u_under, u_delta, u_recs, u_atlas, u_atlas_size, u_shadow, a_pos;
 static int atlas_size;
 static uint8_t rec_data[VIDEO_MAX_RECS * REC_TEXELS * 4];
 
@@ -48,7 +48,7 @@ static const char *fs_src =
     "precision mediump float;\n"
     "#endif\n"
     "#endif\n"
-    "uniform sampler2D u_frame, u_under, u_recs, u_atlas;\n"
+    "uniform sampler2D u_frame, u_under, u_delta, u_recs, u_atlas;\n"
     "uniform float u_atlas_size, u_shadow;\n"
     "varying vec2 v_pos;\n"
     "vec4 rec(float i, float r) { return texture2D(u_recs, vec2((i + 0.5) / 16.0, (r + 0.5) / 256.0)); }\n"
@@ -73,10 +73,18 @@ static const char *fs_src =
     "    if (u.x >= 0.0 && u.x < 1.0 && u.y >= 0.0 && u.y < 1.0 && img.x > 0.0) {\n"
     "        if (mod(fl, 2.0) >= 1.0) u.x = 1.0 - u.x;\n"
     "        if (fl >= 2.0) u.y = 1.0 - u.y;\n"
-    "        vec2 ip = clamp(u * img, vec2(0.5), img - 0.5);\n"
+    "        vec2 ip = u * img;\n"
+    "        if (img.x <= box.x + 0.5) ip = floor(ip) + 0.5;\n"   /* original-resolution art stays pixel-sharp */
+    "        ip = clamp(ip, vec2(0.5), img - 0.5);\n"
     "        c = texture2D(u_atlas, (vec2(num(6.0, r), num(7.0, r)) + ip) / u_atlas_size);\n"
     "        vec4 fill = rec(11.0, r);\n"
     "        if (fill.a > 0.5) c.rgb = fill.rgb * c.a;\n"
+    "        else if (c.a > 0.0) {\n"                              /* palette change (video.c pal_delta) */
+    "            vec4 dt = floor(texture2D(u_delta, tc) * 255.0 + 0.5);\n"   /* |d| per colour, signs in alpha */
+    "            vec3 sg = vec3(mod(floor(dt.a / 4.0), 2.0), mod(floor(dt.a / 2.0), 2.0), mod(dt.a, 2.0));\n"
+    "            vec3 d = dt.bgr * (1.0 - 2.0 * sg) / 255.0;\n"
+    "            c.rgb = clamp(c.rgb / c.a + d, 0.0, 1.0) * c.a;\n"
+    "        }\n"
     "    }\n"
     "    vec3 col = c.rgb + under * (1.0 - c.a);\n"
     "    if (u_shadow > 0.5) col *= 0.5;\n"
@@ -144,6 +152,7 @@ int gpu_init(SDL_Window *w)
     a_pos = 0;
     u_frame = glGetUniformLocation(prog, "u_frame");
     u_under = glGetUniformLocation(prog, "u_under");
+    u_delta = glGetUniformLocation(prog, "u_delta");
     u_recs = glGetUniformLocation(prog, "u_recs");
     u_atlas = glGetUniformLocation(prog, "u_atlas");
     u_atlas_size = glGetUniformLocation(prog, "u_atlas_size");
@@ -159,6 +168,7 @@ int gpu_init(SDL_Window *w)
     atlas_size = max >= 4096 ? 4096 : max >= 2048 ? 2048 : 1024;
     tex_frame = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
     tex_under = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
+    tex_delta = make_tex(NG_SCREEN_W, NG_SCREEN_H, GL_NEAREST, NULL);
     tex_recs = make_tex(REC_TEXELS, 256, GL_NEAREST, NULL);
     tex_atlas = make_tex(atlas_size, atlas_size, GL_LINEAR, NULL);
     fprintf(stderr, "gpu: %s, atlas %d\n", (const char *)glGetString(GL_RENDERER), atlas_size);
@@ -211,14 +221,16 @@ static void put24(uint8_t *t, uint32_t v) { t[0] = (uint8_t)v; t[1] = (uint8_t)(
 void gpu_frame(const uint32_t *fb)
 {
     const video_rec *recs;
-    const uint32_t *under;
-    int n = video_recs(&recs, &under);
+    const uint32_t *under, *delta;
+    int n = video_recs(&recs, &under, &delta);
     frame_no++;
     glBindTexture(GL_TEXTURE_2D, tex_frame);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, fb);
     if (!n) return;
     glBindTexture(GL_TEXTURE_2D, tex_under);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, under);
+    glBindTexture(GL_TEXTURE_2D, tex_delta);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NG_SCREEN_W, NG_SCREEN_H, GL_RGBA, GL_UNSIGNED_BYTE, delta);
     for (int pass = 0; pass < 2; pass++) {
         int full = 0;
         for (int i = 0; i < n && !full; i++) {
@@ -267,6 +279,7 @@ void gpu_present(void)
     glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, tex_under); glUniform1i(u_under, 1);
     glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, tex_recs); glUniform1i(u_recs, 2);
     glActiveTexture(GL_TEXTURE3); glBindTexture(GL_TEXTURE_2D, tex_atlas); glUniform1i(u_atlas, 3);
+    glActiveTexture(GL_TEXTURE4); glBindTexture(GL_TEXTURE_2D, tex_delta); glUniform1i(u_delta, 4);
     glActiveTexture(GL_TEXTURE0);
     glUniform1f(u_atlas_size, (float)atlas_size);
     glUniform1f(u_shadow, ng.shadow ? 1.0f : 0.0f);

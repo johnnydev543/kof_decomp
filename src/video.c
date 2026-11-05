@@ -87,6 +87,9 @@ static int sprite_on_scanline(int scanline, int y, int rows)
  * usual. under[] keeps the colour below each tagged pixel. A rec maps screen positions to box positions
  * (origin and scale, which differ from 1 for shrunk objects), so the image can be sampled at any resolution:
  * video_compose (CPU) or gpu.c.
+ * The image follows palette changes: at each screen pixel the original tile's colour now is compared with
+ * the colour it was exported with (spr_block.ref) and the difference is added (hit flashes, other colour
+ * sets, palette animation; no change leaves the image as drawn).
  * Where the column's palette has a single colour (the characters' shadows: the frame squashed vertically in a
  * flat dark palette) the image only gives the shape, filled with that colour. */
 static int tagging;                              /* rendering a tagged frame */
@@ -94,6 +97,7 @@ static video_rec recs[VIDEO_MAX_RECS];
 static int nrecs;
 static uint32_t under[NG_SCREEN_W * NG_SCREEN_H];  /* colour under a tagged pixel */
 static uint32_t onex[NG_SCREEN_W * NG_SCREEN_H];   /* the replacement's own 1x colour at a tagged pixel */
+static uint32_t pdelta[NG_SCREEN_W * NG_SCREEN_H]; /* palette change at a tagged pixel (pal_delta) */
 static int tag_row;                              /* first index of the current line in under[] / onex[] */
 
 /* the image pixel at box position (fx, fy), continuous box pixels (pixel centres at .5); NULL outside */
@@ -130,24 +134,52 @@ static uint32_t flat_colour(const uint32_t *pal)
     return pal[1];
 }
 
-/* one line of one column of a replacement: column c of the block, box row fy, columns chosen by zx */
-static void draw_replacement_column(const spr_block *b, int c, int fy, int x, int y, int zoom_x, int zoom_y,
-                                    const uint8_t *zx, uint32_t fill, uint32_t *line)
+/* the palette change at one pixel: the original tile's colour now minus the colour it was exported with.
+   Each colour byte holds |difference|, the alpha byte the signs (bit 0 blue, 1 green, 2 red); 0 = no change */
+static inline uint32_t pal_delta(uint32_t now, uint32_t ref)
 {
+    uint32_t v = 0;
+    for (int ch = 0; ch < 3; ch++) {
+        int d = (int)((now >> (8 * ch)) & 0xff) - (int)((ref >> (8 * ch)) & 0xff);
+        v |= (uint32_t)(d < 0 ? -d : d) << (8 * ch);
+        if (d < 0) v |= 1u << (24 + ch);
+    }
+    return v;
+}
+
+static inline uint32_t apply_delta(uint32_t c, uint32_t delta)
+{
+    uint32_t v = 0xff000000u;
+    for (int ch = 0; ch < 3; ch++) {
+        int d = (int)((delta >> (8 * ch)) & 0xff);
+        int x = (int)((c >> (8 * ch)) & 0xff) + (((delta >> (24 + ch)) & 1) ? -d : d);
+        v |= (uint32_t)(x < 0 ? 0 : x > 255 ? 255 : x) << (8 * ch);
+    }
+    return v;
+}
+
+/* one line of one column of a replacement: column c of the block, box row fy, columns chosen by zx; gfx / inc /
+   lp: the tile row it stands for (pixel indices and the palette in use), which give the palette change */
+static void draw_replacement_column(const spr_block *b, int c, int fy, int x, int y, int zoom_x, int zoom_y,
+                                    const uint8_t *zx, const uint8_t *gfx, int inc, const uint32_t *lp, uint32_t *line)
+{
+    uint32_t fill = flat_colour(lp);
     int rec = tagging ? find_rec(b, x - c * (zoom_x + 1), y, zoom_x, zoom_y, fill) : -1;
     int px = x;
-    for (int k = 0; k < 16; k++) {
+    for (int k = 0; k < 16; k++, gfx += inc) {
         if (!zx[k]) continue;
         int sx = px++ & 0x1ff;
         if (sx >= NG_SCREEN_W) continue;
         const uint8_t *col = repl_at(b, c * 16 + k + 0.5f, fy + 0.5f);
         int opaque = col && col[3] >= 128;
-        uint32_t v = opaque ? (fill ? fill : rgba_px(col)) : 0;
+        uint32_t delta = *gfx ? pal_delta(lp[*gfx], b->ref[*gfx]) : 0;
+        uint32_t v = opaque ? (fill ? fill : apply_delta(rgba_px(col), delta)) : 0;
         if (rec < 0) { if (opaque) line[sx] = v; continue; }
         uint32_t *u = &under[tag_row + sx], *o = &onex[tag_row + sx];
         uint32_t below = line[sx];
         *u = (below >> 24) ? below : *o;        /* below another replacement: its 1x colour */
         *o = opaque ? v : *u;
+        pdelta[tag_row + sx] = delta;
         line[sx] = (uint32_t)rec;                 /* tag: alpha 0 */
     }
 }
@@ -203,14 +235,7 @@ static void draw_sprites(int scanline, uint32_t *line, const uint32_t *pens)
         int sprite_y = yt & 0x0f;
         int tile = yt >> 4;
         if (invert) { sprite_y ^= 0x0f; tile ^= 0x1f; }
-
-        const spr_block *rb = spr_native_block(sn);
-        if (rb) {                                   /* remade image for this frame (spr_native.c) */
-            uint16_t pal = vram[(((uint32_t)sn << 6) | ((uint32_t)tile << 1)) + 1] >> 8;
-            draw_replacement_column(rb, sn - rb->first, tile * 16 + sprite_y, x, y, zoom_x, zoom_y,
-                                    zoom_x_tables[zoom_x], flat_colour(&pens[pal << 4]), line);
-            continue;
-        }
+        int box_y = tile * 16 + sprite_y;           /* row in the frame's box (before the tile's own flip) */
 
         uint32_t offs = ((uint32_t)sn << 6) | ((uint32_t)tile << 1);
         uint16_t attr = vram[offs + 1];
@@ -226,6 +251,12 @@ static void draw_sprites(int scanline, uint32_t *line, const uint32_t *pens)
         const uint32_t *lp = &pens[(attr >> 8) << 4];
         int inc = 1;
         if (attr & 0x0001) { gfx += 0x0f; inc = -1; }
+
+        const spr_block *rb = spr_native_block(sn);
+        if (rb) {                                   /* remade image for this frame (spr_native.c) */
+            draw_replacement_column(rb, sn - rb->first, box_y, x, y, zoom_x, zoom_y, zx, gfx, inc, lp, line);
+            continue;
+        }
 
         int px = x;
         for (int k = 0; k < 16; k++, zx++, gfx += inc) {
@@ -268,10 +299,11 @@ void video_render_frame(uint32_t *fb)
     tagging = 0;
 }
 
-int video_recs(const video_rec **r, const uint32_t **under_out)
+int video_recs(const video_rec **r, const uint32_t **under_out, const uint32_t **delta_out)
 {
     *r = recs;
     *under_out = under;
+    *delta_out = pdelta;
     return nrecs;
 }
 
@@ -287,7 +319,7 @@ void video_compose(const uint32_t *fb, uint32_t *out, int s)
                 continue;
             }
             const video_rec *r = &recs[px & 0xff];
-            uint32_t below = under[y * NG_SCREEN_W + x];
+            uint32_t below = under[y * NG_SCREEN_W + x], delta = pdelta[y * NG_SCREEN_W + x];
             if (ng.shadow) below = 0xff000000u | ((below >> 1) & 0x7f7f7f);
             int lx = (x - r->x0) & 0x1ff, ly = (y + NG_VBEND - r->y0) & 0x1ff;
             for (int j = 0; j < s; j++)
@@ -296,7 +328,7 @@ void video_compose(const uint32_t *fb, uint32_t *out, int s)
                                                ((float)ly + (j + 0.5f) / s) * r->scale_y);
                     uint32_t v = below;
                     if (c && c[3] >= 128) {
-                        v = r->fill ? r->fill : rgba_px(c);
+                        v = r->fill ? r->fill : apply_delta(rgba_px(c), delta);
                         if (ng.shadow) v = 0xff000000u | ((v >> 1) & 0x7f7f7f);
                     }
                     o[j * W + i] = v;
