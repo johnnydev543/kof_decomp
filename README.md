@@ -46,6 +46,11 @@ Keys: P1 `W S A D` + `J K U I` (A B C D), P2 arrows + keypad `1 2 4 5`, coin `5`
 Rebind with `--keys FILE` (`action=Key Name` lines; `--print-keys` prints the current set), or with
 *Key settings* on the web page (saved in the browser).
 
+Arcade (MVS) mode by default: `F2` opens the BIOS menu, whose *soft DIP* page sets play speed, continue,
+difficulty (1-8), single or team play, blood colour and more (kept in `kof97.nvram`; on the web page, in the
+browser). `--aes` (web: `?aes=1`) runs the home cartridge mode instead: mode select menu (team, single, VS,
+survivor, records), in-game options, no coins.
+
 ## Layout
 
 ```

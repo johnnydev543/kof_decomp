@@ -59,7 +59,7 @@ $(W)/roms/.stamp: $(addprefix $(B)/roms/,$(ROMFILES))
 $(W)/index.html: $(OBJ) $(W)/roms/.stamp web/shell.html $(wildcard $(OGG)/commands.txt)
 	em++ $(OPT) -o $@ $(OBJ) $(EMFLAGS) -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=268435456 \
 	    -sSTACK_SIZE=1048576 --shell-file web/shell.html \
-	    -sEXPORTED_RUNTIME_METHODS=ccall,UTF8ToString \
+	    -sEXPORTED_RUNTIME_METHODS=ccall,UTF8ToString,FS \
 	    --preload-file $(W)/roms@/build/roms --exclude-file '*/.stamp' \
 	    $(if $(wildcard $(OGG)/commands.txt),--preload-file $(OGG)@/build/assets/kof97/audio) \
     $(if $(wildcard $(MODS)),--preload-file $(MODS)@/mods/kof97)

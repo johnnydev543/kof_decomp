@@ -477,12 +477,17 @@ uint32_t *ng_hd_fb;
 int ng_hd_scale = 1;
 int ng_frame_render;        /* 1: render the whole frame at the start of VBlank (--frame-render) */
 int ng_tagged;
+int ng_aes;                 /* home (AES) mode: the game sees BIOS_MVS_FLAG = 0 (--aes) */
 
 void ng_run_frame(uint32_t *fb)
 {
     for (int line = 0; line < NG_LINES; line++) {
         ng.line = line;
         if (line == 0) {
+            /* home mode: the MVS BIOS sets BIOS_MVS_FLAG ($10FD82) to 1 after its RAM test; once the game's
+               vectors are in, clear it every frame so the game runs its home-cartridge code (mode select
+               menu, options, no coins) */
+            if (ng_aes && ng.use_cart_vectors) ng.ram[0xfd82] = 0;
             if (ng.auto_anim_frame_counter == 0) {
                 ng.auto_anim_frame_counter = ng.auto_anim_speed;
                 ng.auto_anim_counter++;

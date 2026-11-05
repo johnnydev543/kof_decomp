@@ -44,11 +44,26 @@
       if (q.get('hd')) a.push('--hd', q.get('hd'));
       else if (q.get('gpu') !== '0') a.push('--gpu', '--scale', '4');
       if (q.get('audio') !== 'emu') a.push('--native-audio');
+      if (q.get('aes') === '1') a.push('--aes');            /* home (AES) mode: mode select menu, options, no coins */
       return a;
     })(),
     setStatus: function (t) { statusEl.textContent = t || 'Click the game to give it the keyboard.'; },
     print: function (t) { console.log(t); },
     printErr: function (t) { console.warn(t); },
+    /* backup RAM (soft DIPs set with F2, book keeping, records) kept in this browser */
+    preRun: [function () {
+      try {
+        var b64 = localStorage.getItem(NVRAM_STORE);
+        if (b64) FS.writeFile('/kof97.nvram', Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); }));
+      } catch (e) {}
+    }],
+    saveNvram: function (bytes) {
+      try {
+        var s = '';
+        for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+        localStorage.setItem(NVRAM_STORE, btoa(s));
+      } catch (e) {}
+    },
     onRuntimeInitialized: function () {
       try { var saved = localStorage.getItem(KEY_STORE); if (saved) Module.ccall('kof_set_keys', 'number', ['string'], [saved]); } catch (e) {}
       showKeys();
@@ -63,7 +78,7 @@
   };
 
   /* key settings: click an action, then press the key for it (bound by the game itself, saved in this browser) */
-  var KEY_STORE = 'kof97.keys', learning = null;
+  var KEY_STORE = 'kof97.keys', NVRAM_STORE = 'kof97.nvram', learning = null;
   var GROUPS = [
     ['Player 1', ['p1_up', 'p1_down', 'p1_left', 'p1_right', 'p1_a', 'p1_b', 'p1_c', 'p1_d', 'p1_start', 'p1_coin']],
     ['Player 2', ['p2_up', 'p2_down', 'p2_left', 'p2_right', 'p2_a', 'p2_b', 'p2_c', 'p2_d', 'p2_start', 'p2_coin']],

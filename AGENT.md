@@ -196,6 +196,11 @@ make test                        # 重編譯指令 vs Musashi 差分測試
 自訂按鍵：`--keys FILE`（每行 `動作=SDL 鍵名`，`--print-keys` 印出目前設定當範本）；Web 版用頁面上的
 「Key settings」，點動作後按下新鍵，存在瀏覽器 localStorage（同一個鍵會和原本的動作互換）。
 
+街機（MVS）模式下 `F2` 進 BIOS 選單，SOFT DIP 頁可調遊戲速度、接關、難度 1–8、單人 / 組隊、血色等（存在
+`kof97.nvram`；Web 版存在瀏覽器 localStorage）。`--aes`（Web：`?aes=1`）= 家用卡匣模式：BIOS 做完 RAM 測試、
+換成遊戲向量後每幀把 `BIOS_MVS_FLAG`（$10FD82）清 0，遊戲走家用版路徑（MODE SELECT、OPTION、不需投幣）。
+不能從開機就清：BIOS 的 RAM 測試會讀回不符而停在 WORK RAM ERROR。
+
 其他選項：`--interp`（純 Musashi 參考模式）、`--headless --frames N`、`--dump PREFIX --dump-every N`（PPM 截圖）、
 `--wav FILE`、`--script FILE`（`frame duration key[,key]`）、`--autoplay`、`--trace-pc N`、`--misses FILE`、`--nvram FILE`。
 

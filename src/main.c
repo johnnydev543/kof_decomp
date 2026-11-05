@@ -55,6 +55,7 @@ static void usage(void)
          "  --native-audio [DIR] play pre-rendered sound files (tools/assets/export_audio.py) instead of\n"
          "                      emulating the Z80 + YM2610 (default DIR build/assets/kof97/audio)\n"
          "  --mods DIR          remade assets (sprites/, audio/) that replace the originals (default mods/kof97)\n"
+         "  --aes               home (AES) mode: mode select menu, options, no coins\n"
          "  --gpu               draw with OpenGL at the window's resolution (remade sprites at full detail)\n"
          "  --keys FILE         key bindings: lines 'action=Key Name' (actions p1_up .. p1_d, p2_up .. p2_d,\n"
          "                      p1_start, p2_start, p1_coin, p2_coin, service, test; SDL key names)\n"
@@ -468,12 +469,28 @@ static void frame_step(void)
 }
 
 #ifdef __EMSCRIPTEN__
+/* the backup RAM (soft DIPs, book keeping, high scores) is kept by the page in localStorage: every ~10 s, if
+   it changed, hand it to Module.saveNvram (web/shell.html), which writes it back to the file before the next
+   start */
+static void web_save_nvram(void)
+{
+    static uint32_t last;
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < sizeof ng.backup; i++) h = (h ^ ng.backup[i]) * 16777619u;
+    if (h == last) return;
+    last = h;
+    EM_ASM({ if (Module.saveNvram) Module.saveNvram(HEAPU8.subarray($0, $0 + $1)); }, ng.backup, (int)sizeof ng.backup);
+}
+
 /* browser animation frames come at the display rate: run as many 59.185 Hz game frames as are due */
 static void web_tick(void)
 {
     double now = (double)SDL_GetPerformanceCounter();
     int n = 0;
-    while (ui.next <= now && n < 4) { frame_step(); ui.next += ui.frame_ticks; n++; }
+    while (ui.next <= now && n < 4) {
+        frame_step(); ui.next += ui.frame_ticks; n++;
+        if (ui.f % 600 == 0) web_save_nvram();
+    }
     if (now - ui.next > ui.frame_ticks * 10) ui.next = now;
     if (!n) {                                       /* still redraw so the page stays responsive */
         if (use_gpu) gpu_present();
@@ -491,6 +508,7 @@ int main(int argc, char **argv)
         if (!strcmp(a, "--roms")) opt.roms = TAKE;
         else if (!strcmp(a, "--frame-render")) ng_frame_render = 1;
         else if (!strcmp(a, "--gpu")) use_gpu = 1;
+        else if (!strcmp(a, "--aes")) ng_aes = 1;
         else if (!strcmp(a, "--hd")) { ng_hd_scale = atoi(TAKE); ng_frame_render = 1; }
         else if (!strcmp(a, "--sound-log")) sound_log_path = TAKE;
         else if (!strcmp(a, "--keys")) {
