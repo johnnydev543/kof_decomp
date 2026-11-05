@@ -191,8 +191,10 @@ make test                        # 重編譯指令 vs Musashi 差分測試
 ./build/kof97 --scale 4 --fullscreen
 ```
 
-按鍵：P1 方向鍵 + `Z X C V`（A B C D）；P2 `R F D G` + `A S Q W`；`1`/`2` 開始；`5`/`6` 投幣；`9` service；
+按鍵：P1 `W S A D` + `J K U I`（A B C D）；P2 方向鍵 + 數字鍵盤 `1 2 4 5`；`1`/`2` 開始；`5`/`6` 投幣；`9` service；
 `F2` 測試模式；`F3` 重置；`P` 暫停；`F12` 截圖；`Esc` 離開。支援 SDL GameController（Back = 投幣、Start = 開始）。
+自訂按鍵：`--keys FILE`（每行 `動作=SDL 鍵名`，`--print-keys` 印出目前設定當範本）；Web 版用頁面上的
+「Key settings」，點動作後按下新鍵，存在瀏覽器 localStorage（同一個鍵會和原本的動作互換）。
 
 其他選項：`--interp`（純 Musashi 參考模式）、`--headless --frames N`、`--dump PREFIX --dump-every N`（PPM 截圖）、
 `--wav FILE`、`--script FILE`（`frame duration key[,key]`）、`--autoplay`、`--trace-pc N`、`--misses FILE`、`--nvram FILE`。

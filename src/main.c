@@ -54,6 +54,9 @@ static void usage(void)
          "  --native-audio [DIR] play pre-rendered sound files (tools/assets/export_audio.py) instead of\n"
          "                      emulating the Z80 + YM2610 (default DIR build/assets/kof97/audio)\n"
          "  --mods DIR          remade assets (sprites/, audio/) that replace the originals (default mods/kof97)\n"
+         "  --keys FILE         key bindings: lines 'action=Key Name' (actions p1_up .. p1_d, p2_up .. p2_d,\n"
+         "                      p1_start, p2_start, p1_coin, p2_coin, service, test; SDL key names)\n"
+         "  --print-keys        print the key bindings in --keys format (after any --keys) and exit\n"
          "  --sound-log FILE    log every sound command (68k -> Z80) and reply with its frame\n"
          "  --hd S              render at S x resolution (remade sprites keep their detail; implies --frame-render)\n"
          "  --frame-render      draw each frame at once at the start of VBlank (native renderer reference)\n"
@@ -267,21 +270,87 @@ static void sound_reply_cb(uint8_t val) { if (sound_log_f) fprintf(sound_log_f, 
 /* ---- keyboard / gamepad ---- */
 static uint8_t key_p1, key_p2, key_sys, pad_p[2], pad_sys;
 
+/* key bindings by action name (--keys FILE, or the web page's key settings) */
+typedef struct { const char *name; uint8_t *dst; uint8_t bit; SDL_Keycode key, def; } keybind;
+static keybind keymap[] = {
+    /* P1: W/S/A/D + J/K/U/I = A/B/C/D; P2: arrow keys + keypad 1/2/4/5 */
+    { "p1_up", &key_p1, NG_UP, SDLK_w, SDLK_w }, { "p1_down", &key_p1, NG_DOWN, SDLK_s, SDLK_s },
+    { "p1_left", &key_p1, NG_LEFT, SDLK_a, SDLK_a }, { "p1_right", &key_p1, NG_RIGHT, SDLK_d, SDLK_d },
+    { "p1_a", &key_p1, NG_A, SDLK_j, SDLK_j }, { "p1_b", &key_p1, NG_B, SDLK_k, SDLK_k }, { "p1_c", &key_p1, NG_C, SDLK_u, SDLK_u }, { "p1_d", &key_p1, NG_D, SDLK_i, SDLK_i },
+    { "p2_up", &key_p2, NG_UP, SDLK_UP, SDLK_UP }, { "p2_down", &key_p2, NG_DOWN, SDLK_DOWN, SDLK_DOWN },
+    { "p2_left", &key_p2, NG_LEFT, SDLK_LEFT, SDLK_LEFT }, { "p2_right", &key_p2, NG_RIGHT, SDLK_RIGHT, SDLK_RIGHT },
+    { "p2_a", &key_p2, NG_A, SDLK_KP_1, SDLK_KP_1 }, { "p2_b", &key_p2, NG_B, SDLK_KP_2, SDLK_KP_2 }, { "p2_c", &key_p2, NG_C, SDLK_KP_4, SDLK_KP_4 }, { "p2_d", &key_p2, NG_D, SDLK_KP_5, SDLK_KP_5 },
+    { "p1_start", &key_sys, NG_SYS_START1, SDLK_1, SDLK_1 }, { "p2_start", &key_sys, NG_SYS_START2, SDLK_2, SDLK_2 },
+    { "p1_coin", &key_sys, NG_SYS_COIN1, SDLK_5, SDLK_5 }, { "p2_coin", &key_sys, NG_SYS_COIN2, SDLK_6, SDLK_6 },
+    { "service", &key_sys, NG_SYS_SERVICE, SDLK_9, SDLK_9 }, { "test", &key_sys, NG_SYS_TEST, SDLK_F2, SDLK_F2 },
+};
+#define NKEYS (int)(sizeof keymap / sizeof keymap[0])
+static int key_learn = -1;               /* action waiting for a key (web key settings) */
+
+static int key_reserved(SDL_Keycode k) { return k == SDLK_ESCAPE || k == SDLK_p || k == SDLK_F3 || k == SDLK_F12; }
+
+/* bind action to key; another action on the same key gets this action's old key (swap) */
+static int bind_key(int a, SDL_Keycode k)
+{
+    if (a < 0 || a >= NKEYS || k == SDLK_UNKNOWN || key_reserved(k)) return 0;
+    for (int i = 0; i < NKEYS; i++) if (i != a && keymap[i].key == k) keymap[i].key = keymap[a].key;
+    keymap[a].key = k;
+    key_p1 = key_p2 = key_sys = 0;       /* drop held bits of the old bindings */
+    return 1;
+}
+
+static int action_index(const char *name)
+{
+    for (int i = 0; i < NKEYS; i++) if (!strcmp(keymap[i].name, name)) return i;
+    return -1;
+}
+
+/* "action=Key Name" items separated by newlines or ';' (SDL key names, e.g. "W", "Up", "Keypad 1");
+   "default" resets everything first. Returns the number of bindings applied. */
+static int set_keys(const char *spec)
+{
+    int n = 0;
+    char buf[2048];
+    snprintf(buf, sizeof buf, "%s", spec);
+    for (char *item = strtok(buf, ";\n"); item; item = strtok(NULL, ";\n")) {
+        while (*item == ' ' || *item == '\t') item++;
+        if (!*item || *item == '#') continue;
+        if (!strcmp(item, "default")) { for (int i = 0; i < NKEYS; i++) keymap[i].key = keymap[i].def; continue; }
+        char *eq = strchr(item, '=');
+        if (!eq) continue;
+        *eq = 0;
+        char *e = eq - 1; while (e > item && *e == ' ') *e-- = 0;
+        char *v = eq + 1; while (*v == ' ') v++;
+        char *ve = v + strlen(v); while (ve > v && (ve[-1] == ' ' || ve[-1] == '\r')) *--ve = 0;
+        int a = action_index(item);
+        if (a < 0) { fprintf(stderr, "keys: unknown action '%s'\n", item); continue; }
+        if (bind_key(a, SDL_GetKeyFromName(v))) n++;
+        else fprintf(stderr, "keys: cannot bind %s to '%s'\n", item, v);
+    }
+    return n;
+}
+
+static const char *get_keys(void)
+{
+    static char out[2048];
+    size_t o = 0;
+    for (int i = 0; i < NKEYS; i++)
+        o += (size_t)snprintf(out + o, sizeof out - o, "%s=%s;", keymap[i].name, SDL_GetKeyName(keymap[i].key));
+    return out;
+}
+
 static void handle_key(SDL_Keycode k, int down)
 {
-    struct { SDL_Keycode k; uint8_t *dst; uint8_t bit; } map[] = {
-        /* P1: W/S/A/D + J/K/U/I = A/B/C/D; P2: arrow keys + keypad 1/2/4/5 (remapping: later) */
-        { SDLK_w, &key_p1, NG_UP }, { SDLK_s, &key_p1, NG_DOWN }, { SDLK_a, &key_p1, NG_LEFT }, { SDLK_d, &key_p1, NG_RIGHT },
-        { SDLK_j, &key_p1, NG_A }, { SDLK_k, &key_p1, NG_B }, { SDLK_u, &key_p1, NG_C }, { SDLK_i, &key_p1, NG_D },
-        { SDLK_UP, &key_p2, NG_UP }, { SDLK_DOWN, &key_p2, NG_DOWN }, { SDLK_LEFT, &key_p2, NG_LEFT }, { SDLK_RIGHT, &key_p2, NG_RIGHT },
-        { SDLK_KP_1, &key_p2, NG_A }, { SDLK_KP_2, &key_p2, NG_B }, { SDLK_KP_4, &key_p2, NG_C }, { SDLK_KP_5, &key_p2, NG_D },
-        { SDLK_1, &key_sys, NG_SYS_START1 }, { SDLK_2, &key_sys, NG_SYS_START2 },
-        { SDLK_5, &key_sys, NG_SYS_COIN1 }, { SDLK_6, &key_sys, NG_SYS_COIN2 },
-        { SDLK_9, &key_sys, NG_SYS_SERVICE }, { SDLK_F2, &key_sys, NG_SYS_TEST },
-    };
-    for (size_t i = 0; i < sizeof map / sizeof map[0]; i++)
-        if (map[i].k == k) { if (down) *map[i].dst |= map[i].bit; else *map[i].dst &= (uint8_t)~map[i].bit; }
+    for (int i = 0; i < NKEYS; i++)
+        if (keymap[i].key == k) { if (down) *keymap[i].dst |= keymap[i].bit; else *keymap[i].dst &= (uint8_t)~keymap[i].bit; }
 }
+
+#ifdef __EMSCRIPTEN__
+/* called from the page (web/shell.html) */
+EMSCRIPTEN_KEEPALIVE int kof_set_keys(const char *spec) { return set_keys(spec); }
+EMSCRIPTEN_KEEPALIVE const char *kof_get_keys(void) { return get_keys(); }
+EMSCRIPTEN_KEEPALIVE void kof_learn_key(const char *action) { key_learn = action ? action_index(action) : -1; }
+#endif
 
 static void poll_pads(SDL_GameController **pads)
 {
@@ -330,7 +399,17 @@ static void frame_step(void)
         else if (ev.type == SDL_KEYDOWN || ev.type == SDL_KEYUP) {
             int down = ev.type == SDL_KEYDOWN;
             SDL_Keycode k = ev.key.keysym.sym;
-            if (down && k == SDLK_ESCAPE) ui.running = 0;
+            if (key_learn >= 0) {               /* web key settings: this key goes to the chosen action */
+                if (down && !ev.key.repeat) {
+                    int a = key_learn, ok = bind_key(a, k);
+                    key_learn = -1;
+                    (void)ok;
+#ifdef __EMSCRIPTEN__
+                    EM_ASM({ if (Module.onKeyBound) Module.onKeyBound(UTF8ToString($0), $1); }, keymap[a].name, ok);
+#endif
+                }
+            }
+            else if (down && k == SDLK_ESCAPE) ui.running = 0;
             else if (down && k == SDLK_p && !ev.key.repeat) ui.paused = !ui.paused;
             else if (down && k == SDLK_F3) ng_reset();
             else if (down && k == SDLK_F12) {
@@ -389,6 +468,19 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "--frame-render")) ng_frame_render = 1;
         else if (!strcmp(a, "--hd")) { ng_hd_scale = atoi(TAKE); ng_frame_render = 1; }
         else if (!strcmp(a, "--sound-log")) sound_log_path = TAKE;
+        else if (!strcmp(a, "--keys")) {
+            const char *path = TAKE;
+            FILE *kf = fopen(path, "r");
+            char spec[2048] = "";
+            if (!kf) { fprintf(stderr, "cannot open %s\n", path); return 1; }
+            spec[fread(spec, 1, sizeof spec - 1, kf)] = 0;
+            fclose(kf);
+            set_keys(spec);
+        }
+        else if (!strcmp(a, "--print-keys")) {
+            for (const char *k = get_keys(); *k; k++) putchar(*k == ';' ? '\n' : *k);
+            return 0;
+        }
         else if (!strcmp(a, "--native-audio")) native_audio = (i + 1 < argc && argv[i + 1][0] != '-') ? argv[++i] : "build/assets/kof97/audio";
         else if (!strcmp(a, "--mods")) mods_dir = TAKE;
         else if (!strcmp(a, "--interp")) opt.interp = 1;

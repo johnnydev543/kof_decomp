@@ -42,6 +42,10 @@ make namecov        # how much executed code has a name
 make codecheck      # code still emitted as data / bad character labels
 ```
 
+Keys: P1 `W S A D` + `J K U I` (A B C D), P2 arrows + keypad `1 2 4 5`, coin `5`/`6`, start `1`/`2`.
+Rebind with `--keys FILE` (`action=Key Name` lines; `--print-keys` prints the current set), or with
+*Key settings* on the web page (saved in the browser).
+
 ## Layout
 
 ```
