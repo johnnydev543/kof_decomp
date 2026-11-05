@@ -15,6 +15,8 @@ void bios_hle_exec(void);           /* REG_PC is a BIOS address the HLE owns */
 void bios_hle_watch(uint32_t pc);   /* bios_hle_log with the real BIOS: report its calls into the game */
 void bios_hle_soft_dip(const char *spec);   /* "name=value,..." (names as in --soft-dip list) */
 void bios_hle_soft_dip_list(void);          /* print the game's soft-DIP settings (ROMs loaded) */
+void bios_hle_soft_dip_set_now(const char *spec);   /* change them while running */
+const char *bios_hle_soft_dip_info(void);   /* "title|choice|...|=current;..." */
 void bios_hle_make_rom(uint8_t *bios, uint32_t size);   /* a stand-in BIOS image: vectors into the HLE */
 void bios_hle_lo_table(uint8_t *lo); /* the L0 zoom ROM (64 KB), generated */
 

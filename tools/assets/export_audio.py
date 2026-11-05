@@ -11,8 +11,10 @@ and OUT/index.json (sound id -> file(s), category, group, loop points in samples
 YM2610 rate (55555 Hz) so the loop points stay exact. A remade sound saved under the same name in
 mods/<GAME>/audio/ replaces the original (same rate; loop points apply to the new file, or give new ones in
 mods/<GAME>/audio/loops.json). The WAVs are derived from the ROM: keep them local, never publish them.
+By default the ADPCM-A channels are cleaned of the images their 18.5 kHz sample-and-hold leaves above 9.25 kHz
+(hq_mix); --raw writes the chip output exactly as emulated.
 
-usage: export_audio.py [--out build/assets/<GAME>/audio] [--jobs 8] [--only music,voice_character,...]
+usage: export_audio.py [--out build/assets/<GAME>/audio] [--jobs 8] [--only music,voice_character,...] [--raw]
 """
 import argparse
 import json
@@ -33,19 +35,54 @@ SKIP = ('control', 'unused', 'unknown')
 
 
 def render(seq, secs, mute=None):
-    """stereo int16 samples (bytes) of the driver's output for a command sequence"""
+    """stereo int16 samples (bytes) of the driver's output for a command sequence (HQ: ADPCM-A images removed)"""
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as t:
         path = t.name
+    pa_path = path[:-4] + '_pa.wav'
     try:
         args = [RENDER, '--roms', os.path.join(game.ROOT, 'build/roms'), '--seq', seq, '--secs', '%.3f' % secs,
                 '--wav', path]
+        if HQ:
+            args += ['--wav-pa', pa_path]
         if mute:
             args += ['--mute', mute]
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+        global RAW_LAST
         with wave.open(path) as w:
-            return w.readframes(w.getnframes())
+            frames = RAW_LAST = w.readframes(w.getnframes())
+        if HQ:
+            with wave.open(pa_path) as w:
+                frames = hq_mix(frames, w.readframes(w.getnframes()))
+        return frames
     finally:
         os.remove(path)
+        if os.path.exists(pa_path):
+            os.remove(pa_path)
+
+
+HQ = True          # main(): --raw turns it off
+RAW_LAST = b''     # the unfiltered output of the last render (trim decides on it)
+_LOWPASS = None
+HALF = 127         # half the low-pass length: its ringing before / after a sound
+
+
+def hq_mix(frames, pa_frames):
+    """The YM2610's ADPCM-A channels are decoded at 18.5 kHz and held for three output samples, which mirrors
+    their sound above 9.25 kHz (heard as grit; the board's analogue stage smooths it, the chip emulation does
+    not). The ADPCM-A part (rendered alongside, sound_render --wav-pa) goes through a linear-phase low-pass
+    (8.6 kHz, 255 taps, Kaiser): images gone, nothing below the cut changed, FM / SSG / ADPCM-B untouched."""
+    import numpy as np
+    from scipy import signal
+    global _LOWPASS
+    if _LOWPASS is None:
+        _LOWPASS = signal.firwin(255, 8600, fs=RATE, window=('kaiser', 8.0)).astype(np.float32)
+    full = np.frombuffer(frames, np.int16).reshape(-1, 2).astype(np.float32)
+    pa = np.frombuffer(pa_frames, np.int16).reshape(-1, 2).astype(np.float32)
+    n = min(len(full), len(pa))
+    out = full[:n] - pa[:n]
+    for c in (0, 1):
+        out[:, c] += signal.oaconvolve(pa[:n, c], _LOWPASS, mode='same')
+    return np.clip(np.round(out), -32768, 32767).astype(np.int16).tobytes()
 
 
 def save(path, frames):
@@ -56,16 +93,18 @@ def save(path, frames):
         w.writeframes(frames)
 
 
-def trim(frames, loop_len=None):
-    """drop the leading silence (driver latency) and the trailing silence of a one-shot"""
+def trim(frames, loop_len=None, ref=None):
+    """drop the leading silence (driver latency) and the trailing silence of a one-shot; the cut points come
+    from ref (the unfiltered render) so a sound starts on the same sample with or without --raw (the HQ
+    filter's tail after the last sample is kept)"""
     import array
-    a = array.array('h', frames)
+    a = array.array('h', ref if ref is not None else frames)
     n = len(a) // 2
     nz = [i for i in range(n) if abs(a[2 * i]) > 0 or abs(a[2 * i + 1]) > 0]
     if not nz:
         return None
     s = nz[0]
-    e = s + loop_len if loop_len else nz[-1] + 1
+    e = s + loop_len if loop_len else nz[-1] + 1 + (HALF if ref is not None and HQ else 0)
     return frames[4 * s:4 * min(e, n)]
 
 
@@ -87,7 +126,8 @@ def job(task):
     else:
         loop = e.get('loop_len') if e.get('loop') else None
         secs = (loop / RATE + 0.1) if loop else (e.get('secs') or 3) + 0.3
-        x = trim(render(seq, secs + 0.2), loop)
+        x = render(seq, secs + 0.2)
+        x = trim(x, loop, RAW_LAST)
         if x is None:
             return name, []
         save(os.path.join(out, name + '.wav'), x)
@@ -100,7 +140,10 @@ def main():
     ap.add_argument('--out', default=os.path.join(game.ROOT, 'build/assets', game.NAME, 'audio'))
     ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) // 2))
     ap.add_argument('--only', help='comma list of categories')
+    ap.add_argument('--raw', action='store_true', help="the chip output as emulated (no ADPCM-A image filter)")
     a = ap.parse_args()
+    global HQ
+    HQ = not a.raw
     if not os.path.exists(RENDER):
         sys.exit('build/sound_render missing: make build/sound_render')
     sounds = json.load(open(game.path('audio.json')))

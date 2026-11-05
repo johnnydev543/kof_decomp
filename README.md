@@ -22,8 +22,8 @@ It contains:
 
 - **A native BIOS** (`src/bios_hle.c`, `--bios-hle 3`): the MVS BIOS's boot, VBlank, controller, coin,
   credit and attract-cycle logic rewritten from its disassembly, so the game runs without a BIOS ROM.
-  `make biostest` compares it with the BIOS ROM on the coverage scripts (same BIOS calls, sound commands and
-  pictures).
+  `make biostest` compares it with the BIOS ROM on the coverage scripts: all 67 give the same BIOS calls,
+  sound commands and pictures.
 
 **No ROM data is included.** You need your own `kof97.zip` (MAME set); `neogeo.zip` is optional (the BIOS ROM
 for the test bench, its F2 menu and the reference runs; without it use `--bios-hle 3`). Everything built from
@@ -61,8 +61,8 @@ browser allows it (https or localhost; plain-http LAN addresses keep SDL's audio
 Arcade (MVS) mode by default: with the BIOS ROM `F2` opens the BIOS menu, whose *soft DIP* page sets play
 speed, continue, difficulty (1-8), single or team play, blood colour and more; with the native BIOS use
 `--soft-dip difficulty=level_8,game_mode=single_play` (`--soft-dip list` shows the settings; web:
-`?dip=...`). Settings are kept in `kof97.nvram` (on the web page, in the browser). The web page uses the native
-BIOS (`?bios=rom` for the ROM). `--aes` (web: `?aes=1`) runs the home cartridge mode instead: mode select menu (team, single, VS,
+`?dip=...`, or the *Soft DIP* panel). Settings are kept in `kof97.nvram` (on the web page, in the browser).
+The web page uses the native BIOS (`?bios=rom` for the ROM). `--aes` (web: `?aes=1`) runs the home cartridge mode instead: mode select menu (team, single, VS,
 survivor, records), in-game options, no coins.
 
 ## Layout

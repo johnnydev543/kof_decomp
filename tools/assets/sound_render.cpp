@@ -1,7 +1,9 @@
 // sound_render - offline renderer for the Neo Geo sound driver (tools/assets/export_audio.py).
 // Links src/audio.cpp (Z80 + ymfm YM2610) through its offline hooks; reads m1/sm1/v from the ROM dir.
 //
-//   sound_render [--roms build/roms] --seq "F:BB,F:BB,..." [--secs S] [--wav OUT.wav] [--ticks OUT.bin] [--ym OUT.txt]
+//   sound_render [--roms build/roms] --seq "F:BB,F:BB,..." [--secs S] [--wav OUT.wav] [--wav-pa PA.wav]
+//                [--ticks OUT.bin] [--ym OUT.txt]
+// --wav-pa: the ADPCM-A part of the same output (already in OUT.wav), for the exporter's filtering
 //
 // Boots the sound system exactly like the logged MVS boot + game start
 // (BIOS: 01, cart switch, 03, 02 jingle; game sound_init: 03, 07), then
@@ -66,17 +68,19 @@ static int ym_hook(int port, uint8_t val) {
     return val;
 }
 
+static std::vector<int16_t> pcm_pa;            // ADPCM-A part (--wav-pa)
+static void drain() {
+    static int16_t buf[4096 * 2], pa[4096 * 2];
+    int n;
+    while ((n = audio_read_samples_pa(buf, pa, 4096)) > 0)
+        if (recording) { pcm.insert(pcm.end(), buf, buf + 2 * n); pcm_pa.insert(pcm_pa.end(), pa, pa + 2 * n); }
+}
 static void run_frame() {
-    static int16_t buf[4096 * 2];
     for (int l = 0; l < 264; l++) {
         audio_run(256);
-        if (audio_samples_available() >= 2048) {
-            int n;
-            while ((n = audio_read_samples(buf, 4096)) > 0) if (recording) pcm.insert(pcm.end(), buf, buf + 2 * n);
-        }
+        if (audio_samples_available() >= 2048) drain();
     }
-    int n;
-    while ((n = audio_read_samples(buf, 4096)) > 0) if (recording) pcm.insert(pcm.end(), buf, buf + 2 * n);
+    drain();
 }
 
 static void write_wav(const std::string &path, const std::vector<int16_t> &s) {
@@ -94,7 +98,7 @@ static void write_wav(const std::string &path, const std::vector<int16_t> &s) {
 
 int main(int argc, char **argv) {
     std::string roms = "build/roms/";
-    std::string wav, ticks, ym, seq;
+    std::string wav, wav_pa, ticks, ym, seq;
     double secs = 10;
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -102,6 +106,7 @@ int main(int argc, char **argv) {
         else if (a == "--seq") seq = argv[++i];
         else if (a == "--secs") secs = atof(argv[++i]);
         else if (a == "--wav") wav = argv[++i];
+        else if (a == "--wav-pa") wav_pa = argv[++i];
         else if (a == "--ticks") ticks = argv[++i];
         else if (a == "--ym") ym = argv[++i];
         else if (a == "--mute") {
@@ -128,6 +133,7 @@ int main(int argc, char **argv) {
     }
     auto m1 = load(roms + "m1.bin"), sm1 = load(roms + "sm1.bin"), v = load(roms + "v.bin");
     audio_init(m1.data(), m1.size(), sm1.data(), sm1.size(), v.data(), v.size());
+    if (!wav_pa.empty()) audio_tap_adpcm_a(1);
     audio_step_hook = step_hook;
     audio_ym_hook = ym_hook;
     if (!ticks.empty()) ticks_f = fopen(ticks.c_str(), "wb");
@@ -154,6 +160,7 @@ int main(int argc, char **argv) {
         run_frame();
     }
     if (!wav.empty()) write_wav(wav, pcm);
+    if (!wav_pa.empty()) write_wav(wav_pa, pcm_pa);
     if (ticks_f) fclose(ticks_f);
     if (ym_f) fclose(ym_f);
     // summary

@@ -26,6 +26,8 @@ uint8_t audio_read_reply(void);          /* 68k read of 0x320000 (high byte) */
 void audio_run(int z80_cycles);          /* advance Z80 by N cycles and the YM2610 by the same time */
 int  audio_read_samples(int16_t *stereo_out, int max_frames); /* drain stereo frames */
 int  audio_samples_available(void);      /* frames currently buffered */
+void audio_tap_adpcm_a(int on);          /* also keep the ADPCM-A part of each frame (sound_render --wav-pa) */
+int  audio_read_samples_pa(int16_t *stereo_out, int16_t *pa_out, int max_frames);  /* drain both */
 int  audio_save_state(void *buf, int max); /* not implemented: returns 0 */
 
 /* Debug/diagnostics */

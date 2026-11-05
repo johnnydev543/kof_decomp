@@ -20,6 +20,10 @@
   #keypanel td button { min-width: 90px; }
   #keypanel button.learn { border-color: #e0b040; color: #e0b040; }
   #keytools { display: flex; gap: 8px; align-items: center; }
+  #dippanel { display: none; }
+  #dippanel.open { display: block; }
+  #dippanel td { padding: 2px 8px; }
+  #dippanel select { background: #222; color: #ccc; border: 1px solid #555; border-radius: 4px; font: inherit; }
   /* on-screen controls for touch screens */
   #touch { display: none; width: min(96vw, 1280px); justify-content: space-between; align-items: center;
            user-select: none; -webkit-user-select: none; touch-action: none; }
@@ -45,7 +49,8 @@
     <div id="tbtns"><div class="tb" data-action="p1_c">C</div><div class="tb" data-action="p1_d">D</div>
                     <div class="tb" data-action="p1_a">A</div><div class="tb" data-action="p1_b">B</div></div>
   </div>
-  <div id="keytools"><button id="keybtn">Key settings</button><button id="touchbtn">Touch controls</button></div>
+  <div id="keytools"><button id="keybtn">Key settings</button><button id="touchbtn">Touch controls</button><button id="dipbtn">Soft DIP</button></div>
+  <div id="dippanel"></div>
   <div id="keypanel"></div>
 </div>
 <script>
@@ -158,6 +163,38 @@
     }
     showKeys();
     canvas.focus();                             /* the game reads the keyboard */
+  });
+
+  /* soft DIPs of the native BIOS (the BIOS ROM's F2 menu is not there): read and set through the game */
+  function showDips() {
+    var panel = document.getElementById('dippanel');
+    var info = runtimeReady ? Module.ccall('kof_soft_dip_info', 'string', [], []) : '';
+    if (!info) { panel.innerHTML = '<small>Soft DIPs: with the BIOS ROM (?bios=rom) use its F2 menu.</small>'; return; }
+    var html = '<table>';
+    info.split(';').forEach(function (item) {
+      if (!item) return;
+      var f = item.split('|'), title = f[0], cur = f[f.length - 1].slice(1), choices = f.slice(1, -1);
+      if (choices.every(function (c) { return !c; })) return;        /* NEXT PAGE */
+      html += '<tr><td>' + esc(title.replace(/_/g, ' ').toUpperCase()) + '</td><td><select data-dip="' + title + '">';
+      choices.forEach(function (c, i) {
+        html += '<option value="' + c + '"' + (String(i) === cur ? ' selected' : '') + '>' + esc(c.replace(/_/g, ' ')) + '</option>';
+      });
+      html += '</select></td></tr>';
+    });
+    panel.innerHTML = html + '</table><small>Most settings apply from the next game; kept in this browser.</small>';
+  }
+  document.getElementById('dipbtn').addEventListener('click', function () {
+    var p = document.getElementById('dippanel');
+    p.classList.toggle('open');
+    if (p.classList.contains('open')) showDips();
+    canvas.focus();
+  });
+  document.getElementById('dippanel').addEventListener('change', function (e) {
+    var sel = e.target.closest('select');
+    if (!sel) return;
+    Module.ccall('kof_soft_dip_set', null, ['string'], [sel.dataset.dip + '=' + sel.value]);
+    showDips();
+    canvas.focus();
   });
 
   /* touch controls (shown on touch screens, or with ?touch=1 / the button): press / release game actions */

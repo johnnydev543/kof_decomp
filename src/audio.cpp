@@ -38,6 +38,18 @@ void (*g_reply_hook)(uint8_t) = nullptr;   // survives audio_init/shutdown
 // offline rendering hooks (tools/assets/sound_render.cpp); null in the game
 extern "C" { void (*audio_step_hook)(uint16_t pc) = 0; int (*audio_ym_hook)(int port, uint8_t val) = 0; }
 
+// YM2610 that can also report the ADPCM-A part of each sample (sound_render --wav-pa: the exporter filters it)
+class Ym2610Tap : public ymfm::ym2610 {
+public:
+    using ymfm::ym2610::ym2610;
+    void adpcm_a(int32_t &l, int32_t &r) {
+        ymfm::ymfm_output<2> o;
+        o.clear();
+        m_adpcm_a.output(o, 0x3f);
+        l = o.data[0]; r = o.data[1];
+    }
+};
+
 class YmIntf : public ymfm::ymfm_interface {
 public:
     explicit YmIntf(AudioState &s) : st(s) {}
@@ -67,7 +79,7 @@ struct AudioState {
     bool irq_line = false;
 
     YmIntf intf;
-    ymfm::ym2610 ym;
+    Ym2610Tap ym;
 
     // timing, in YM input clocks (8 MHz)
     uint64_t target_z80 = 0;       // absolute Z80 cycle target
@@ -78,6 +90,8 @@ struct AudioState {
 
     // output ring buffer (stereo frames)
     int16_t ring[RING_FRAMES * 2];
+    int16_t ring_pa[RING_FRAMES * 2];   // ADPCM-A part of each frame (when tap_pa)
+    bool tap_pa = false;
     unsigned ring_rd = 0, ring_wr = 0;  // free-running frame counters
 
     AudioState() : intf(*this), ym(intf) {}
@@ -105,6 +119,13 @@ struct AudioState {
     void generate_sample() {
         ymfm::ym2610::output_data out;
         ym.generate(&out, 1);
+        if (tap_pa) {
+            int32_t al, ar;
+            ym.adpcm_a(al, ar);
+            unsigned i = (ring_wr % RING_FRAMES) * 2;
+            ring_pa[i] = (int16_t)al;
+            ring_pa[i + 1] = (int16_t)ar;
+        }
         int ssg = out.data[2] * SSG_MIX_NUM / SSG_MIX_DEN;
         int l = out.data[0] + ssg;
         int r = out.data[1] + ssg;
@@ -341,6 +362,24 @@ extern "C" void audio_run(int z80_cycles) {
             }
         }
     }
+}
+
+extern "C" void audio_tap_adpcm_a(int on) { if (g) g->tap_pa = on != 0; }
+
+extern "C" int audio_read_samples_pa(int16_t *stereo_out, int16_t *pa_out, int max_frames) {
+    if (!g || !stereo_out || max_frames <= 0) return 0;
+    AudioState &s = *g;
+    int n = 0;
+    while (n < max_frames && s.ring_rd != s.ring_wr) {
+        unsigned i = (s.ring_rd % RING_FRAMES) * 2;
+        stereo_out[n * 2] = s.ring[i];
+        stereo_out[n * 2 + 1] = s.ring[i + 1];
+        pa_out[n * 2] = s.ring_pa[i];
+        pa_out[n * 2 + 1] = s.ring_pa[i + 1];
+        s.ring_rd++;
+        n++;
+    }
+    return n;
 }
 
 extern "C" int audio_read_samples(int16_t *stereo_out, int max_frames) {

@@ -544,6 +544,38 @@ static void soft_dip_apply(void)
 
 void bios_hle_soft_dip(const char *spec) { snprintf(soft_dip_spec, sizeof soft_dip_spec, "%s", spec); }
 
+/* change soft DIPs now (web page): GAME_DIP and the slot's stored copy (the game reads most at a new game) */
+void bios_hle_soft_dip_set_now(const char *spec)
+{
+    char keep[sizeof soft_dip_spec];
+    memcpy(keep, soft_dip_spec, sizeof keep);
+    snprintf(soft_dip_spec, sizeof soft_dip_spec, "%s", spec);
+    soft_dip_apply();
+    memcpy(soft_dip_spec, keep, sizeof keep);
+}
+
+/* "title|choice|choice...|=current;..." for each list setting */
+static char dip_info[2048];
+static size_t dip_info_n;
+static void dip_info_one(int idx, const char *title, int n, uint32_t names, void *ctx)
+{
+    (void)ctx;
+    char c[16];
+    dip_info_n += (size_t)snprintf(dip_info + dip_info_n, sizeof dip_info - dip_info_n, "%s", title);
+    for (int k = 0; k < n; k++) {
+        dip_name(names + 12 * (uint32_t)k, c);
+        dip_info_n += (size_t)snprintf(dip_info + dip_info_n, sizeof dip_info - dip_info_n, "|%s", c);
+    }
+    dip_info_n += (size_t)snprintf(dip_info + dip_info_n, sizeof dip_info - dip_info_n, "|=%u;", rd8(GAME_DIP + 6 + (uint32_t)idx));
+}
+const char *bios_hle_soft_dip_info(void)
+{
+    dip_info_n = 0;
+    dip_info[0] = 0;
+    dip_walk(dip_info_one, NULL);
+    return dip_info;
+}
+
 /* the soft-DIP defaults of the BIOS's region ($C11612): EU table */
 static void soft_dip_defaults(void)
 {
@@ -626,7 +658,24 @@ static int eyecatch_jingle;
 static void eyecatch_frame(void);
 static void eyecatch_end(void);
 
-/* BIOS eye-catcher $C17E26 (drawn black): sound $03, the jingle $02 six frames later, SYSTEM_RETURN after
+/* the eye-catcher's picture: the BIOS ROM's logo is not available, so a line of text in the cartridge's
+   own fix font (bank 0 holds ASCII: colour 1 the letters, colour 2 the cell) with palette 15 */
+static void fix_text(int col, int row, const char *t)
+{
+    wr16(REG_VRAMMOD, 32);                        /* fix map: next column */
+    wr16(REG_VRAMADDR, 0x7000 + (unsigned)col * 32 + (unsigned)row);
+    for (; *t; t++) wr16(REG_VRAMRW, 0xF000 | (unsigned char)*t);
+}
+static void eyecatch_draw(void)
+{
+    wr16(0x400000 + (15 * 16 + 1) * 2, 0x7FFF);   /* white */
+    wr16(0x400000 + (15 * 16 + 2) * 2, 0x8000);   /* black */
+    fix_text(16, 13, "NEO-GEO");
+    fix_text(14, 16, "MAX 330 MEGA");
+    fix_text(13, 17, "PRO-GEAR SPEC");
+}
+
+/* BIOS eye-catcher $C17E26 (text instead of the ROM's logo): sound $03, the jingle $02 six frames later, SYSTEM_RETURN after
    eyecatch_frames frames; timed by frame number (woken once per VBlank) */
 static void eyecatch(void)
 {
@@ -634,6 +683,7 @@ static void eyecatch(void)
     if (eyecatch_frames <= 0) { eyecatch_end(); return; }
     eyecatch_start = ng.frame;
     eyecatch_jingle = 0;
+    eyecatch_draw();
     m68ki_set_sr_noint(0x2000);
     wait_vblank(eyecatch_frame);
 }

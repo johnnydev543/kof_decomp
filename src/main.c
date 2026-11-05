@@ -404,6 +404,9 @@ static void handle_key(SDL_Keycode k, int down)
 EMSCRIPTEN_KEEPALIVE int kof_set_keys(const char *spec) { return set_keys(spec); }
 EMSCRIPTEN_KEEPALIVE const char *kof_get_keys(void) { return get_keys(); }
 EMSCRIPTEN_KEEPALIVE void kof_learn_key(const char *action) { key_learn = action ? action_index(action) : -1; }
+/* soft-DIP settings of the native BIOS (key settings panel) */
+EMSCRIPTEN_KEEPALIVE const char *kof_soft_dip_info(void) { return bios_hle_level >= 3 ? bios_hle_soft_dip_info() : ""; }
+EMSCRIPTEN_KEEPALIVE void kof_soft_dip_set(const char *spec) { if (bios_hle_level >= 3) bios_hle_soft_dip_set_now(spec); }
 /* on-screen touch buttons: press / release a keyboard action */
 EMSCRIPTEN_KEEPALIVE void kof_touch(const char *action, int down)
 {

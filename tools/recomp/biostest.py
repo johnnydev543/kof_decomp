@@ -133,12 +133,13 @@ def main():
     a = ap.parse_args()
     EXTRA[:] = a.args.split()
     if a.all:
-        a.scripts = sorted(os.path.basename(s)[:-4] for s in glob.glob(os.path.join(game.DIR, 'scripts', '*.txt')))
+        a.scripts = sorted(os.path.basename(s)[:-4] for s in glob.glob(os.path.join(game.DIR, 'scripts', '*.txt'))
+                           if not s.endswith('testmode.txt'))      # testmode uses the ROM's F2 menu
     scripts = [os.path.join(game.DIR, 'scripts', s + '.txt') for s in a.scripts]
     def both(s):
         d = run(s, 'rom', a.level, a.every)
         run(s, 'hle', a.level, a.every, rom_timing(d))
-    with ThreadPoolExecutor(max(1, a.jobs // 2)) as ex:
+    with ThreadPoolExecutor(max(1, a.jobs)) as ex:      # one emulator per script at a time
         list(ex.map(both, scripts))
     ok = True
     for s in scripts:

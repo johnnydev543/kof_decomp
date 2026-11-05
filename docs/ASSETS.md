@@ -16,6 +16,10 @@ python3 tools/assets/export_audio.py                          # 聲音 -> build/
   （只供參考），`sheet.png` 是一覽表，`index.json` 列出所有 ID。
 - **聲音**：`build/assets/kof97/audio/<指令>.wav`，16-bit 立體聲 55555 Hz；音樂含前奏與循環段，部分音樂分成
   幾個分軌（`<指令>_s0.wav`、`_s1.wav`…，各自循環）。`index.json` 列出每個聲音 ID 的類別與循環點。
+  預設是「高品質」版：YM2610 的 ADPCM-A（人聲、鼓等）以 18.5 kHz 解碼後保持三個取樣點，會在 9.25 kHz 以上
+  產生鏡像雜音（沙沙聲；實機的類比電路會把它濾掉一部分，晶片模擬沒有）。匯出時同一次渲染另外取出 ADPCM-A
+  的部分，用線性相位低通（8.6 kHz）去掉鏡像再混回；8.6 kHz 以下、FM / SSG / ADPCM-B 都不變，樣本數與循環點
+  也不變。`export_audio.py --raw` 輸出未處理的晶片音。
 
 ## 2. 重製
 
