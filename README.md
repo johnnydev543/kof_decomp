@@ -26,7 +26,7 @@ from them (`build/`) is local only and must not be redistributed.
 ## Requirements
 
 - Linux (other Unix systems may work), `make`, a C/C++ compiler, Python 3
-- `pkg-config`, SDL2 development files (`libsdl2-dev`)
+- `pkg-config`, SDL2 development files (`libsdl2-dev`), OpenGL development files (`libgl-dev`) for `--gpu`
 - 68000 binutils for the disassembly: `binutils-m68k-linux-gnu` (or `m68k-elf-*`; set `M68K_PREFIX`)
 
 ## Quick start

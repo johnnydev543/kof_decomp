@@ -11,6 +11,7 @@
 #include "audio.h"
 #include "snd_native.h"
 #include "spr_native.h"
+#include "gpu.h"
 #include "m68k.h"
 
 static uint32_t fb[NG_SCREEN_W * NG_SCREEN_H];     /* frame buffer (ARGB) */
@@ -54,6 +55,7 @@ static void usage(void)
          "  --native-audio [DIR] play pre-rendered sound files (tools/assets/export_audio.py) instead of\n"
          "                      emulating the Z80 + YM2610 (default DIR build/assets/kof97/audio)\n"
          "  --mods DIR          remade assets (sprites/, audio/) that replace the originals (default mods/kof97)\n"
+         "  --gpu               draw with OpenGL at the window's resolution (remade sprites at full detail)\n"
          "  --keys FILE         key bindings: lines 'action=Key Name' (actions p1_up .. p1_d, p2_up .. p2_d,\n"
          "                      p1_start, p2_start, p1_coin, p2_coin, service, test; SDL key names)\n"
          "  --print-keys        print the key bindings in --keys format (after any --keys) and exit\n"
@@ -213,11 +215,10 @@ static void script_input(int frame, uint8_t *p1, uint8_t *p2, uint8_t *sys)
         }
 }
 
-/* screenshot of what is shown: the 1x frame buffer, or the --hd buffer */
-static void write_ppm(const char *path, const uint32_t *fb1x)
+static int use_gpu;
+
+static void write_ppm_buf(const char *path, const uint32_t *fb, int w, int h)
 {
-    int s = ng_hd_fb ? ng_hd_scale : 1, w = NG_SCREEN_W * s, h = NG_SCREEN_H * s;
-    const uint32_t *fb = ng_hd_fb ? ng_hd_fb : fb1x;
     FILE *f = fopen(path, "wb");
     if (!f) { perror(path); return; }
     fprintf(f, "P6\n%d %d\n255\n", w, h);
@@ -226,6 +227,18 @@ static void write_ppm(const char *path, const uint32_t *fb1x)
         fwrite(px, 1, 3, f);
     }
     fclose(f);
+}
+
+/* screenshot of what is shown: the 1x frame buffer, the --hd buffer, or the GPU output */
+static void write_ppm(const char *path, const uint32_t *fb1x)
+{
+    if (use_gpu) {
+        uint32_t *buf; int w, h;
+        if (gpu_read(&buf, &w, &h)) { write_ppm_buf(path, buf, w, h); free(buf); }
+        return;
+    }
+    int s = ng_hd_fb ? ng_hd_scale : 1;
+    write_ppm_buf(path, ng_hd_fb ? ng_hd_fb : fb1x, NG_SCREEN_W * s, NG_SCREEN_H * s);
 }
 
 /* ---- WAV writer ---- */
@@ -438,10 +451,20 @@ static void frame_step(void)
             }
         }
     }
-    SDL_UpdateTexture(ui.tex, NULL, ng_hd_fb ? ng_hd_fb : fb, NG_SCREEN_W * ng_hd_scale * 4);
-    SDL_RenderClear(ui.ren);
-    SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL);
-    SDL_RenderPresent(ui.ren);
+    if (use_gpu) {
+        if (!ui.paused) gpu_frame(fb);
+        gpu_present();
+    } else {
+        SDL_UpdateTexture(ui.tex, NULL, ng_hd_fb ? ng_hd_fb : fb, NG_SCREEN_W * ng_hd_scale * 4);
+        SDL_RenderClear(ui.ren);
+        SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL);
+        SDL_RenderPresent(ui.ren);
+    }
+    if (opt.dump_prefix && !ui.paused && ui.f % opt.dump_every == 0) {     /* screenshots of the window too */
+        char path[600];
+        snprintf(path, sizeof path, "%s_%06d.ppm", opt.dump_prefix, ui.f);
+        write_ppm(path, fb);
+    }
 }
 
 #ifdef __EMSCRIPTEN__
@@ -453,7 +476,8 @@ static void web_tick(void)
     while (ui.next <= now && n < 4) { frame_step(); ui.next += ui.frame_ticks; n++; }
     if (now - ui.next > ui.frame_ticks * 10) ui.next = now;
     if (!n) {                                       /* still redraw so the page stays responsive */
-        SDL_RenderClear(ui.ren); SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL); SDL_RenderPresent(ui.ren);
+        if (use_gpu) gpu_present();
+        else { SDL_RenderClear(ui.ren); SDL_RenderCopy(ui.ren, ui.tex, NULL, NULL); SDL_RenderPresent(ui.ren); }
     }
 }
 #endif
@@ -466,6 +490,7 @@ int main(int argc, char **argv)
 #define TAKE (v ? (i++, v) : (usage(), exit(1), (const char *)NULL))
         if (!strcmp(a, "--roms")) opt.roms = TAKE;
         else if (!strcmp(a, "--frame-render")) ng_frame_render = 1;
+        else if (!strcmp(a, "--gpu")) use_gpu = 1;
         else if (!strcmp(a, "--hd")) { ng_hd_scale = atoi(TAKE); ng_frame_render = 1; }
         else if (!strcmp(a, "--sound-log")) sound_log_path = TAKE;
         else if (!strcmp(a, "--keys")) {
@@ -527,6 +552,8 @@ int main(int argc, char **argv)
     if (opt.script) load_script(opt.script);
     if (opt.autoplay) build_autoplay();
 
+    if (use_gpu && opt.headless) use_gpu = 0;
+    if (use_gpu) { ng_hd_scale = 1; ng_frame_render = 1; ng_tagged = 1; }   /* the GPU composes at any size */
     if (ng_hd_scale < 1 || ng_hd_scale > 8) ng_hd_scale = 1;
     if (ng_hd_scale > 1) ng_hd_fb = calloc((size_t)NG_SCREEN_W * NG_SCREEN_H * ng_hd_scale * ng_hd_scale, 4);
     if (!ng_load_roms(opt.roms)) return 1;
@@ -587,15 +614,25 @@ int main(int argc, char **argv)
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
+    if (use_gpu) gpu_gl_attributes();
     SDL_Window *win = SDL_CreateWindow("KOF97 (recompiled)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                        NG_SCREEN_W * opt.scale, NG_SCREEN_H * opt.scale,
-                                       SDL_WINDOW_RESIZABLE | (opt.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
+                                       SDL_WINDOW_RESIZABLE | (opt.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) |
+                                       (use_gpu ? SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI : 0));
     if (!win) { fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
-    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    if (!ren) ren = SDL_CreateRenderer(win, -1, 0);
-    SDL_RenderSetLogicalSize(ren, NG_SCREEN_W * ng_hd_scale, NG_SCREEN_H * ng_hd_scale);
-    SDL_Texture *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                         NG_SCREEN_W * ng_hd_scale, NG_SCREEN_H * ng_hd_scale);
+    SDL_Renderer *ren = NULL;
+    SDL_Texture *tex = NULL;
+    if (use_gpu && !gpu_init(win)) {
+        fprintf(stderr, "gpu: falling back to the SDL renderer\n");
+        use_gpu = 0; ng_tagged = 0;
+    }
+    if (!use_gpu) {
+        ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+        if (!ren) ren = SDL_CreateRenderer(win, -1, 0);
+        SDL_RenderSetLogicalSize(ren, NG_SCREEN_W * ng_hd_scale, NG_SCREEN_H * ng_hd_scale);
+        tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                NG_SCREEN_W * ng_hd_scale, NG_SCREEN_H * ng_hd_scale);
+    }
 
     SDL_AudioSpec want = { 0 }, have;
     want.freq = AUDIO_RATE; want.format = AUDIO_S16SYS; want.channels = 2; want.samples = 1024;

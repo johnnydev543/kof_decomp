@@ -29,8 +29,9 @@ python3 tools/assets/export_audio.py                          # 聲音 -> build/
 ## 3. 執行
 
 ```sh
-build/kof97 --hd 4 --native-audio --mods mods/kof97    # 4 倍解析度 + 原生聲音 + 你的素材
-make audio-ogg && make web && make serve               # Web 版：打包 OGG 聲音與 mods/kof97；網址加 ?hd=4
+build/kof97 --gpu --native-audio --mods mods/kof97     # GPU 繪圖（視窗解析度）+ 原生聲音 + 你的素材
+build/kof97 --hd 4 --native-audio --mods mods/kof97    # 不用 GPU：CPU 以 4 倍解析度繪圖
+make audio-ogg && make web && make serve               # Web 版：打包 OGG 聲音與 mods/kof97，預設 WebGL 繪圖
 ```
 
 - `--native-audio [DIR]`：用預錄的聲音檔（及 `mods/` 的替換檔）播放，不再模擬 Z80 / YM2610。找不到 `.wav`
@@ -38,6 +39,10 @@ make audio-ogg && make web && make serve               # Web 版：打包 OGG �
 - `make audio-ogg`：把聲音壓成 Ogg Vorbis 到 `build/assets/kof97/audio_ogg/`（約 55 MB，WAV 約 820 MB），
   Web 版會打包這份並預設使用原生聲音；網址加 `?audio=emu` 改回晶片模擬。沒有先跑這一步的話，Web 版使用
   晶片模擬的聲音。
+- `--gpu`：用 OpenGL 以視窗的解析度繪圖（可任意縮放、全螢幕），替換圖以雙線性取樣、邊緣半透明混合。
+  原版圖塊照像素放大，結果和 `--hd` 相同。Web 版預設使用（WebGL），網址加 `?gpu=0` 改用 CPU 繪圖；無法使用
+  OpenGL / WebGL 時自動改用 CPU 繪圖。
+- `make web MODS=目錄`：Web 版改打包別的替換素材目錄（預設 `mods/kof97`）。
 - `--hd S`：以 S 倍解析度輸出（例如 4 = 1280×896）。原版圖塊照像素放大，替換圖以完整解析度取樣，所以
   重繪時放大的細節會保留。
 - `--mods DIR`：替換素材的目錄（預設 `mods/kof97`）；沒有替換檔的動畫格 / 聲音照原版。

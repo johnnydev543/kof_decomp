@@ -14,7 +14,7 @@ EMFLAGS := -sUSE_SDL=2
 CFLAGS  := -I$(MUSASHI) -Isrc $(EMFLAGS)
 
 RC_C    := $(foreach i,$(shell seq -w 0 $$(($(NFILES)-1))),$(B)/recomp/rc_$(i).c) $(B)/recomp/rc_table.c
-APP_C   := src/main.c src/neogeo.c src/video.c src/cpu.c src/snd_native.c src/spr_native.c
+APP_C   := src/main.c src/neogeo.c src/video.c src/cpu.c src/snd_native.c src/spr_native.c src/gpu.c
 OBJ     := $(patsubst src/%.c,$(W)/obj/%.o,$(APP_C)) \
            $(W)/obj/z80.o $(W)/obj/audio.o \
            $(W)/obj/m68kcpu.o $(W)/obj/m68kops.o $(W)/obj/m68kdasm.o $(W)/obj/softfloat.o \
@@ -22,11 +22,13 @@ OBJ     := $(patsubst src/%.c,$(W)/obj/%.o,$(APP_C)) \
            $(patsubst $(B)/recomp/%.c,$(W)/obj/recomp/%.o,$(RC_C))
 # native sound files (`make audio-ogg`), packed under the runtime's default --native-audio directory
 OGG     := $(B)/assets/kof97/audio_ogg
+# remade assets packed as the runtime's default --mods directory
+MODS    ?= mods/kof97
 ROMFILES := p1.bin p2.bin bios.bin s1.bin sfix.bin m1.bin sm1.bin v.bin c.bin lo.bin
 
 all: $(W)/index.html
 
-$(W)/obj/%.o: src/%.c src/neogeo.h src/cpu.h src/recomp_rt.h src/snd_native.h src/spr_native.h
+$(W)/obj/%.o: src/%.c src/neogeo.h src/cpu.h src/recomp_rt.h src/snd_native.h src/spr_native.h src/gpu.h
 	@mkdir -p $(dir $@)
 	emcc $(OPT) $(CFLAGS) -c $< -o $@
 $(W)/obj/z80.o: src/z80/z80.c src/z80/z80.h
@@ -60,4 +62,4 @@ $(W)/index.html: $(OBJ) $(W)/roms/.stamp web/shell.html $(wildcard $(OGG)/comman
 	    -sEXPORTED_RUNTIME_METHODS=ccall,UTF8ToString \
 	    --preload-file $(W)/roms@/build/roms --exclude-file '*/.stamp' \
 	    $(if $(wildcard $(OGG)/commands.txt),--preload-file $(OGG)@/build/assets/kof97/audio) \
-    $(if $(wildcard mods/kof97),--preload-file mods/kof97@/mods/kof97)
+    $(if $(wildcard $(MODS)),--preload-file $(MODS)@/mods/kof97)

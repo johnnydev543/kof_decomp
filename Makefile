@@ -12,7 +12,7 @@ RC_OPT  ?= -O1
 B       := build
 NFILES  := 48
 SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
-SDL_LIBS   := $(shell pkg-config --libs sdl2)
+SDL_LIBS   := $(shell pkg-config --libs sdl2) $(if $(filter Darwin,$(shell uname)),-framework OpenGL,-lGL)
 
 MUSASHI_SRC := third_party/Musashi
 MUSASHI     := $(B)/musashi
@@ -21,7 +21,7 @@ YMFM        := third_party/ymfm/src
 YMFM_OBJ    := $(B)/obj/ymfm_opn.o $(B)/obj/ymfm_adpcm.o $(B)/obj/ymfm_ssg.o $(B)/obj/ymfm_misc.o
 RC_C        := $(foreach i,$(shell seq -w 0 $$(($(NFILES)-1))),$(B)/recomp/rc_$(i).c) $(B)/recomp/rc_table.c
 RC_OBJ      := $(patsubst $(B)/recomp/%.c,$(B)/obj/recomp/%.o,$(RC_C))
-APP_OBJ     := $(B)/obj/main.o $(B)/obj/neogeo.o $(B)/obj/video.o $(B)/obj/cpu.o $(B)/obj/audio.o $(B)/obj/z80.o $(B)/obj/snd_native.o $(B)/obj/spr_native.o
+APP_OBJ     := $(B)/obj/main.o $(B)/obj/neogeo.o $(B)/obj/video.o $(B)/obj/cpu.o $(B)/obj/audio.o $(B)/obj/z80.o $(B)/obj/snd_native.o $(B)/obj/spr_native.o $(B)/obj/gpu.o
 
 CFLAGS_COMMON := -I$(MUSASHI) -Isrc -Wall
 ROMS := $(B)/roms/p1.bin
@@ -85,7 +85,7 @@ $(B)/obj/recomp/%.o: $(B)/recomp/%.c src/recomp_rt.h $(MUSASHI)/m68kops.c
 	$(CC) $(RC_OPT) $(CFLAGS_COMMON) -Wno-unused-label -c $< -o $@
 
 # ---- runtime ---------------------------------------------------------------------------------
-$(B)/obj/main.o: src/main.c src/neogeo.h src/cpu.h src/audio.h
+$(B)/obj/main.o $(B)/obj/gpu.o: $(B)/obj/%.o: src/%.c src/neogeo.h src/cpu.h src/audio.h src/gpu.h src/spr_native.h
 	@mkdir -p $(dir $@)
 	$(CC) $(OPT) $(CFLAGS_COMMON) $(SDL_CFLAGS) -c $< -o $@
 $(B)/obj/%.o: src/%.c src/neogeo.h src/cpu.h src/recomp_rt.h $(MUSASHI)/m68kops.c
@@ -160,7 +160,7 @@ audio-ogg:                     # Ogg Vorbis copies of the sounds for the web bui
 # ---- web build (Emscripten in $(EMSDK)) and the LAN-only development server ------------------
 EMSDK ?= $(HOME)/emsdk
 web: $(RC_C) $(MUSASHI)/m68kops.c $(B)/roms/p1.bin
-	bash -c 'source $(EMSDK)/emsdk_env.sh >/dev/null 2>&1 && $(MAKE) -f web.mk -j$(WEB_JOBS)'
+	bash -c 'source $(EMSDK)/emsdk_env.sh >/dev/null 2>&1 && $(MAKE) -f web.mk -j$(WEB_JOBS) $(if $(MODS),MODS=$(MODS))'
 WEB_JOBS ?= 10
 WEB_PORT ?= 8097
 serve: web

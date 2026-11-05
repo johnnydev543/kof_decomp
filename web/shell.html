@@ -36,11 +36,13 @@
   canvas.addEventListener('click', function () { canvas.focus(); });
   var Module = {
     canvas: canvas,
-    /* ?hd=4 renders at 4x (remade sprites keep their detail); sounds come from the packed sound files
-       (`make audio-ogg`), ?audio=emu runs the emulated Z80 and YM2610 instead */
+    /* drawn with WebGL at the canvas resolution (remade sprites keep their detail); ?gpu=0 uses the CPU
+       renderer, ?hd=4 the CPU renderer at 4x. Sounds come from the packed sound files (`make audio-ogg`),
+       ?audio=emu runs the emulated Z80 and YM2610 instead */
     arguments: (function () {
       var q = new URLSearchParams(location.search), a = [];
       if (q.get('hd')) a.push('--hd', q.get('hd'));
+      else if (q.get('gpu') !== '0') a.push('--gpu', '--scale', '4');
       if (q.get('audio') !== 'emu') a.push('--native-audio');
       return a;
     })(),
