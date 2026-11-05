@@ -1,12 +1,11 @@
 # kof_decomp
 
-A decompilation project for SNK Neo Geo fighting games, starting with **The King of Fighters '97** (MVS).
+A disassembly project for SNK Neo Geo fighting games, starting with **The King of Fighters '97** (MVS).
+The goal is the game's 68000 program as assembly source: matching, shiftable and named. It is not
+converted to C; the game was written in 68000 assembly, and reassemblable assembly is the end product.
 
 It contains:
 
-- **A Neo Geo emulator with a static recompiler.** The 68000 program ROM is translated to C and runs
-  cycle-exactly next to a Musashi fallback interpreter, with an SDL2 front end, YM2610 sound (ymfm) and a
-  Z80 core. `make test` checks the recompiled instructions against the interpreter.
 - **A matching, shiftable disassembly.** `make matching` turns the P1 program ROM into GNU `as`
   source that reassembles to the original bytes (MAME CRCs verified). The source is symbolic: inserting
   code anywhere moves everything and the game still behaves the same. `make shifttest` verifies this by
@@ -16,6 +15,10 @@ It contains:
   character's runs execute it, which command or action triggers it, and which named function owns it.
   Official move names come from the game's move list. Coverage today: about 90% of the executed program
   code is under a name (`make namecov`).
+- **A Neo Geo emulator used as the test bench** (SDL2, Musashi 68000 interpreter, YM2610 via ymfm, Z80):
+  the shift test, executed-address logs and breakpoint / RAM-watch evidence all come from it. It can also
+  run the program through an optional 68000 -> C recompiler for speed (`make test`, `make modecheck`
+  check it against the interpreter); that part is not needed for the disassembly.
 
 **No ROM data is included.** You need your own `kof97.zip` and `neogeo.zip` (MAME sets). Everything built
 from them (`build/`) is local only and must not be redistributed.
@@ -42,8 +45,8 @@ make codecheck      # code still emitted as data / bad character labels
 ## Layout
 
 ```
-src/                 emulator and runtime (Neo Geo hardware, video, audio, CPU glue)
-tools/recomp/        68000 -> C recompiler, mode check (recompiled vs interpreted)
+src/                 emulator used as the test bench (Neo Geo hardware, video, audio, CPU)
+tools/recomp/        68000 decoder and code discovery (used by the disassembler); optional C recompiler
 tools/disasm/        matching disassembler (mkasm.py, mkrom.py), shift test and debugging tools,
                      naming tools (charmap, actionmap, specmap, derivemap, movenames, chrcheck, namecov)
 tools/rea/, ghidra/  seeds and setup for REA / Ghidra analysis

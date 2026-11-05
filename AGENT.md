@@ -1,7 +1,17 @@
-# AGENT.md — KOF97 (Neo Geo MVS) ROM → C 靜態重編譯專案
+# AGENT.md — KOF97 (Neo Geo MVS) matching 反組譯專案
 
-本文件給接手的 agent / 開發者：說明本專案如何用 **REA (Reverse Engineer Anything, morluto/rea) MCP 工具** 解析
-`roms/` 內的 KOF97 ROM，把 68000 程式碼轉成可編譯的 C，並在 SDL2 執行期中提供 **畫面、操作、音樂音效**。
+本專案的目標是 KOF97 主程式（P1 ROM，Motorola 68000）的 **組合語言反組譯**：
+1. **matching**：反組譯出的 GNU as 原始碼（`build/disasm/p1.s`）重新組譯後與原 ROM 逐位元組相同；
+2. **shiftable**：所有指標、跳躍表、handler 位址都是符號，任意插入或刪除程式碼後遊戲行為不變（位移測試驗證）；
+3. **命名**：函式、資料、RAM、物件欄位都有名稱與註解（`games/kof97/symbols/`）。
+
+不轉成 C：遊戲本身就是以 68000 組合語言寫成，反組譯成可重組的組語即為最終產物。
+`src/` 的 Neo Geo 模擬器（SDL2、Musashi 直譯、YM2610、Z80）是驗證與觀測工具：位移測試、執行位址紀錄（`--exec-log`）、
+`--break` / `--watch` 等執行期證據都靠它。`tools/recomp/m68k_recomp.py` 的 68000 解碼與程式碼探索是反組譯器
+`mkasm.py` 的核心；它另外能把程式產生成 C 給模擬器加速執行（下文第 4 節與 `make modecheck`），那部分只是早期的附帶功能，
+對反組譯的目標不需要。
+
+本文件也記錄如何用 **REA (Reverse Engineer Anything, morluto/rea) MCP 工具** 做輔助分析。
 
 > 換另一套 Neo Geo 遊戲（反組譯 → matching → 命名）的步驟與要修改的常數：見 `docs/NEW_ROM_GUIDE.md`。
 
@@ -33,7 +43,7 @@ build/kof97                          (執行檔)
 | ROM 前處理 | `tools/romprep.py` | 驗證 MAME `kof97` 母版 CRC，輸出執行期與 REA 用的檔案 |
 | REA 種子/包裝 | `tools/rea/mkseeds.py` → `seeds_p1.tsv`, `seeds_bios.tsv`；`rea.sh` | Ghidra 分析前注入的進入點（由檔頭跳躍與向量表產生）；`rea.sh` 設好 PATH/GHIDRA/JAVA |
 | Ghidra 腳本 | `tools/ghidra/NeoGeoSetup.java` | （選用）建立完整 Neo Geo 記憶體映射的 Ghidra 專案，供 GUI 手動分析 |
-| 靜態重編譯器 | `tools/recomp/m68k_recomp.py` | 68000 → C 產生器 |
+| 68000 解碼器 / 重編譯器 | `tools/recomp/m68k_recomp.py` | 指令解碼與程式碼探索（反組譯器使用）；附帶的 68000 → C 產生器（選用） |
 | Musashi 小工具 | `tools/recomp/m68kinfo.c`, `disasm.py` | opcode 合法性/週期表、反組譯（重編譯器交叉驗證用） |
 | 執行期 | `src/` | `cpu.c` 調度器、`neogeo.c` 硬體、`video.c` LSPC、`audio.cpp` Z80+YM2610、`main.c` SDL2 前端 |
 | 測試 | `tests/rc_difftest.c`, `tests/audio_test.cpp` | 每條翻譯指令與 Musashi 差分比對；音效子系統測試 |
@@ -115,7 +125,10 @@ Neo Geo ROM 是無檔頭的 raw binary，REA 不會自動辨識。一定要指�
 
 ---
 
-## 4. 靜態重編譯器 `tools/recomp/m68k_recomp.py`
+## 4. 68000 解碼器與（選用的）C 重編譯 `tools/recomp/m68k_recomp.py`
+
+> 反組譯只用到本節的解碼與程式碼探索（`decode()` / `discover()` / 指標表掃描）；產生 C 只用於加速模擬器，不是專案目標。
+
 
 - **輸入**：`p1.be`、`bios.be`、REA index、向量表/檔頭/BIOS 跳躍表、`tools/recomp/extra_seeds.txt`（手動）、
   `build/recomp/runtime_misses.txt`（執行期回饋）、`build/m68k_table.txt` 與 `build/m68kinfo`（Musashi 提供的
