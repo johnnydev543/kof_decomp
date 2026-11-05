@@ -22,19 +22,24 @@ python3 tools/assets/export_audio.py                          # 聲音 -> build/
 - **圖片**：把 `fNNN_<ID>.png` 丟進 ComfyUI 重繪（可以放大），存成 **`mods/kof97/sprites/<ID>.png`**
   （檔名只要 ID，6 位十六進位）。任何尺寸都可以，繪製時會縮放到原動畫格的框；背景要透明（alpha < 128 視為
   透明）。翻轉、位置、前後順序由遊戲決定，不用處理。
-- **聲音**：重製後存成同名檔 **`mods/kof97/audio/<指令>.wav`**（16-bit、55555 Hz、立體聲或單聲道）。
+- **聲音**：重製後存成同名檔 **`mods/kof97/audio/<指令>.wav`**（16-bit、55555 Hz、立體聲或單聲道；也可以是
+  同名的 `.ogg`）。
   音樂的循環點沿用原版的樣本位置，所以重製音樂時請保持長度與循環點不變。
 
 ## 3. 執行
 
 ```sh
 build/kof97 --hd 4 --native-audio --mods mods/kof97    # 4 倍解析度 + 原生聲音 + 你的素材
-make web && make serve                                 # Web 版：建置時會一起打包 mods/kof97；網址加 ?hd=4
+make audio-ogg && make web && make serve               # Web 版：打包 OGG 聲音與 mods/kof97；網址加 ?hd=4
 ```
 
-- `--native-audio`：用預錄的聲音檔（及 `mods/` 的替換檔）播放，不再模擬 Z80 / YM2610。
+- `--native-audio [DIR]`：用預錄的聲音檔（及 `mods/` 的替換檔）播放，不再模擬 Z80 / YM2610。找不到 `.wav`
+  時改讀同名的 `.ogg`，替換聲音也可以存成 OGG（55555 Hz）。
+- `make audio-ogg`：把聲音壓成 Ogg Vorbis 到 `build/assets/kof97/audio_ogg/`（約 55 MB，WAV 約 820 MB），
+  Web 版會打包這份並預設使用原生聲音；網址加 `?audio=emu` 改回晶片模擬。沒有先跑這一步的話，Web 版使用
+  晶片模擬的聲音。
 - `--hd S`：以 S 倍解析度輸出（例如 4 = 1280×896）。原版圖塊照像素放大，替換圖以完整解析度取樣，所以
   重繪時放大的細節會保留。
 - `--mods DIR`：替換素材的目錄（預設 `mods/kof97`）；沒有替換檔的動畫格 / 聲音照原版。
 - 目前限制：有縮放（拉近拉遠）的物件仍畫原版圖塊；替換圖以 RGBA 直接繪製，不套用遊戲的調色盤特效
-  （受擊閃光、陰影色等）。Web 版的原生聲音需要壓縮格式，尚未完成（Web 版仍用晶片模擬的聲音）。
+  （受擊閃光、陰影色等）。

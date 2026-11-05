@@ -101,7 +101,7 @@
   ],
   "cat": "jingle_fm",
   "group": "music",
-  "note": "FM 1/2/5/6, steals music FM; not sent by the game (BIOS boot)"
+  "note": "FM 1/2/5/6, steals music FM; not sent by the game (BIOS boot)", "secs": 12
  },
  "00c": {
   "id": 12,

@@ -6,17 +6,21 @@
  *   ssg        one voice for the 1-byte UI sounds (60-7F)
  *   adpcmb     one voice (19 xx)
  *   03 reset / 04 stop all + mute / 05 stop music + mute music / 06 stop sfx + mute sfx /
- *   07, 08, 09 unmute both / music / sfx / 20 stop music / 0A nn fade music out / 14 = stop modifier for
+ *   02 eyecatch (the BIOS sends it after 03, so it unmutes music) / 07, 08, 09 unmute both / music / sfx / 20 stop music / 0A nn fade music out / 14 = stop modifier for
  *   the next 2-byte command (stops a looping sound)
  * The Z80's reply is the last command byte (00 after a reset), which is what the BIOS and game expect.
  * Files: <assets>/<cmd>.wav (tools/assets/export_audio.py, 16-bit stereo 55555 Hz) listed in
  * <assets>/commands.txt; a file of the same name in the mods directory is used instead (remade sounds).
- * Loaded on first use and kept. */
+ * Where a .wav is missing, the .ogg of the same name is used (Ogg Vorbis, `make audio-ogg`; the web build
+ * packs these). Loaded on first use and kept. */
 #include "snd_native.h"
 #include "audio.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define STB_VORBIS_NO_PUSHDATA_API
+#include "../third_party/stb/stb_vorbis.c"
 
 #define MAX_CMDS 2048
 #define MAX_FILES 4
@@ -67,16 +71,41 @@ static int load_wav(const char *path, sample_t *s)
     }
 }
 
+static int load_ogg(const char *path, sample_t *s)
+{
+    int channels, rate;
+    short *pcm;
+    int n = stb_vorbis_decode_filename(path, &channels, &rate, &pcm);
+    if (n <= 0) return 0;
+    if (rate != AUDIO_RATE) fprintf(stderr, "snd_native: %s is %d Hz, not %d\n", path, rate, AUDIO_RATE);
+    s->pcm = malloc((size_t)n * 4);
+    for (int i = 0; i < n; i++) {
+        s->pcm[2 * i] = pcm[i * channels];
+        s->pcm[2 * i + 1] = pcm[i * channels + (channels > 1)];
+    }
+    free(pcm);
+    s->frames = n;
+    return 1;
+}
+
+/* dir/name, or the .ogg of the same name */
+static int load_sound(const char *dir, const char *name, sample_t *s)
+{
+    char p[1100];
+    snprintf(p, sizeof p, "%s/%s", dir, name);
+    if (load_wav(p, s)) return 1;
+    char *dot = strrchr(p, '.');
+    if (!dot || strcmp(dot, ".wav")) return 0;
+    strcpy(dot, ".ogg");
+    return load_ogg(p, s);
+}
+
 static sample_t *need(sample_t *s)
 {
     if (!s->tried) {
-        char p[1100];
         s->tried = 1;
-        snprintf(p, sizeof p, "%s/%s", mods_dir, s->name);
-        if (!mods_dir[0] || !load_wav(p, s)) {
-            snprintf(p, sizeof p, "%s/%s", asset_dir, s->name);
-            if (!load_wav(p, s)) fprintf(stderr, "snd_native: cannot load %s\n", p);
-        }
+        if ((!mods_dir[0] || !load_sound(mods_dir, s->name, s)) && !load_sound(asset_dir, s->name, s))
+            fprintf(stderr, "snd_native: cannot load %s/%s\n", asset_dir, s->name);
         if (s->loop_end > s->frames) s->loop_end = s->frames;
     }
     return s->pcm ? s : NULL;
@@ -172,7 +201,8 @@ void snd_native_command(uint8_t b)
     reply = b;
     if (b == 0x0a || (b >= 0x18 && b <= 0x1e)) { prefix = b; return; }
     switch (b) {
-    case 0x00: case 0x01: case 0x02: case 0x10: break;
+    case 0x00: case 0x01: case 0x10: break;
+    case 0x02: mute_music = 0; play(b); break;      /* BIOS eyecatch jingle, sent right after the 03 reset */
     case 0x03: memset(&music, 0, sizeof music); stop_sfx(); mute_music = mute_sfx = 1; reply = 0; break;
     case 0x04: memset(&music, 0, sizeof music); stop_sfx(); mute_music = mute_sfx = 1; break;
     case 0x05: memset(&music, 0, sizeof music); mute_music = 1; break;

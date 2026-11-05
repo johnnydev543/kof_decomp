@@ -154,6 +154,8 @@ $(B)/sound_render: tools/assets/sound_render.cpp $(B)/obj/audio.o $(B)/obj/z80.o
 assets: $(B)/sound_render $(B)/roms/p1.bin
 	python3 tools/assets/export_sprites.py --composites --sheet
 	python3 tools/assets/export_audio.py
+audio-ogg:                     # Ogg Vorbis copies of the sounds for the web build (~55 MB instead of ~820 MB)
+	python3 tools/assets/ogg_audio.py
 
 # ---- web build (Emscripten in $(EMSDK)) and the LAN-only development server ------------------
 EMSDK ?= $(HOME)/emsdk
@@ -164,4 +166,4 @@ WEB_PORT ?= 8097
 serve: web
 	python3 tools/web/serve.py --port $(WEB_PORT) --dir $(B)/web
 
-.PHONY: all rea recomp test clean web serve assets matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap
+.PHONY: all rea recomp test clean web serve assets audio-ogg matching shifttest charmap actionmap specmap modecheck namecov codecheck derivemap

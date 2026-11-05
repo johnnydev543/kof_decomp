@@ -57,7 +57,7 @@ games/kof97/         everything specific to KOF97:
   moves.tsv            move list (from MAME command.dat)
   commands.tsv         decoded per-character commands (motion + buttons -> move routine)
   rea/                 REA seeds for the P1 ROM
-third_party/         Musashi (68000), ymfm (YM2610), z80
+third_party/         Musashi (68000), ymfm (YM2610), z80, stb (PNG / Ogg Vorbis decoding)
 docs/NEW_ROM_GUIDE.md  how to add another Neo Geo game
 AGENT.md             detailed technical notes (Chinese)
 ```
@@ -78,6 +78,7 @@ directory. The build output (`build/`, the `build/kof97` executable) currently h
 - Musashi 68000 core by Karl Stenerud (see `third_party/Musashi/readme.txt`)
 - ymfm by Aaron Giles, BSD 3-Clause (`third_party/ymfm/LICENSE`)
 - z80 by Nicolas Allemand, MIT (`third_party/z80/LICENSE`)
+- stb_image and stb_vorbis by Sean Barrett, public domain (`third_party/stb/`)
 - Move list in `games/kof97/moves.tsv`: MAME command.dat (progettosnaps.net), rebuilt by Fabricio
   Coroquer, created by Minoplis
 - The King of Fighters and Neo Geo are trademarks of SNK. This project is not affiliated with SNK.

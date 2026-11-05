@@ -20,11 +20,13 @@ OBJ     := $(patsubst src/%.c,$(W)/obj/%.o,$(APP_C)) \
            $(W)/obj/m68kcpu.o $(W)/obj/m68kops.o $(W)/obj/m68kdasm.o $(W)/obj/softfloat.o \
            $(W)/obj/ymfm_opn.o $(W)/obj/ymfm_adpcm.o $(W)/obj/ymfm_ssg.o $(W)/obj/ymfm_misc.o \
            $(patsubst $(B)/recomp/%.c,$(W)/obj/recomp/%.o,$(RC_C))
+# native sound files (`make audio-ogg`), packed under the runtime's default --native-audio directory
+OGG     := $(B)/assets/kof97/audio_ogg
 ROMFILES := p1.bin p2.bin bios.bin s1.bin sfix.bin m1.bin sm1.bin v.bin c.bin lo.bin
 
 all: $(W)/index.html
 
-$(W)/obj/%.o: src/%.c src/neogeo.h src/cpu.h src/recomp_rt.h
+$(W)/obj/%.o: src/%.c src/neogeo.h src/cpu.h src/recomp_rt.h src/snd_native.h src/spr_native.h
 	@mkdir -p $(dir $@)
 	emcc $(OPT) $(CFLAGS) -c $< -o $@
 $(W)/obj/z80.o: src/z80/z80.c src/z80/z80.h
@@ -52,8 +54,9 @@ $(W)/roms/.stamp: $(addprefix $(B)/roms/,$(ROMFILES))
 	cp $^ $(W)/roms/
 	touch $@
 
-$(W)/index.html: $(OBJ) $(W)/roms/.stamp web/shell.html
+$(W)/index.html: $(OBJ) $(W)/roms/.stamp web/shell.html $(wildcard $(OGG)/commands.txt)
 	em++ $(OPT) -o $@ $(OBJ) $(EMFLAGS) -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=268435456 \
 	    -sSTACK_SIZE=1048576 --shell-file web/shell.html \
 	    --preload-file $(W)/roms@/build/roms --exclude-file '*/.stamp' \
-	    $(if $(wildcard mods/kof97),--preload-file mods/kof97@/mods/kof97)
+	    $(if $(wildcard $(OGG)/commands.txt),--preload-file $(OGG)@/build/assets/kof97/audio) \
+    $(if $(wildcard mods/kof97),--preload-file mods/kof97@/mods/kof97)

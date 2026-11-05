@@ -438,7 +438,14 @@ int main(int argc, char **argv)
     if (ng_hd_scale < 1 || ng_hd_scale > 8) ng_hd_scale = 1;
     if (ng_hd_scale > 1) ng_hd_fb = calloc((size_t)NG_SCREEN_W * NG_SCREEN_H * ng_hd_scale * ng_hd_scale, 4);
     if (!ng_load_roms(opt.roms)) return 1;
-    if (native_audio && !snd_native_init(native_audio, mods_dir ? mods_dir : "")) return 1;
+    if (native_audio && !snd_native_init(native_audio, mods_dir ? mods_dir : "")) {
+#ifdef __EMSCRIPTEN__
+        fprintf(stderr, "no packed sounds: using the emulated sound chips\n");   /* build without `make audio-ogg` */
+        native_audio = NULL;
+#else
+        return 1;
+#endif
+    }
     if (mods_dir) spr_native_init(mods_dir);
     if (sound_log_path && (sound_log_f = fopen(sound_log_path, "w"))) { ng_sound_log = sound_log_cb; audio_set_reply_hook(sound_reply_cb); }
     ng_init(opt.interp ? CPU_MODE_INTERP : CPU_MODE_RECOMP, (opt.misses && *opt.misses) ? opt.misses : NULL);

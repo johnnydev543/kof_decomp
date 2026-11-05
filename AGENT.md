@@ -47,7 +47,7 @@ build/kof97                          (執行檔)
 | Musashi 小工具 | `tools/recomp/m68kinfo.c`, `disasm.py` | opcode 合法性/週期表、反組譯（重編譯器交叉驗證用） |
 | 執行期 | `src/` | `cpu.c` 調度器、`neogeo.c` 硬體、`video.c` LSPC、`audio.cpp` Z80+YM2610、`main.c` SDL2 前端 |
 | 測試 | `tests/rc_difftest.c`, `tests/audio_test.cpp` | 每條翻譯指令與 Musashi 差分比對；音效子系統測試 |
-| 第三方 | `third_party/` | Musashi (MIT)、ymfm (BSD-3)、superzazu/z80 (MIT，修補版在 `src/z80/`) |
+| 第三方 | `third_party/` | Musashi (MIT)、ymfm (BSD-3)、superzazu/z80 (MIT，修補版在 `src/z80/`)、stb_image / stb_vorbis (public domain) |
 
 ---
 
