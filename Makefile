@@ -166,7 +166,11 @@ audio-ogg:                     # Ogg Vorbis copies of the sounds for the web bui
 # ---- web build (Emscripten in $(EMSDK)) and the LAN-only development server ------------------
 EMSDK ?= $(HOME)/emsdk
 web: $(RC_C) $(MUSASHI)/m68kops.c $(B)/roms/p1.bin
-	bash -c 'source $(EMSDK)/emsdk_env.sh >/dev/null 2>&1 && $(MAKE) -f web.mk -j$(WEB_JOBS) $(if $(MODS),MODS=$(MODS))'
+	@test -f $(EMSDK)/emsdk_env.sh || { echo "Emscripten SDK not found: $(EMSDK)/emsdk_env.sh"; \
+	  echo "  install: git clone https://github.com/emscripten-core/emsdk.git $(EMSDK) &&"; \
+	  echo "           cd $(EMSDK) && ./emsdk install latest && ./emsdk activate latest"; \
+	  echo "  or point to an existing one: make web EMSDK=/path/to/emsdk"; exit 1; }
+	bash -c 'source $(EMSDK)/emsdk_env.sh >/dev/null && command -v emcc >/dev/null || { echo "emcc not found after sourcing $(EMSDK)/emsdk_env.sh (./emsdk activate latest?)"; exit 1; }; $(MAKE) -f web.mk -j$(WEB_JOBS) $(if $(MODS),MODS=$(MODS))'
 WEB_JOBS ?= 10
 WEB_PORT ?= 8097
 serve: web
