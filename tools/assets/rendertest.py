@@ -12,7 +12,7 @@ which shows the game's mid-frame writes):
     takes the box pixel the hardware chose for each screen pixel, shrunk objects included)
 Runs use fresh backup RAM, a fixed calendar and the coverage scripts in games/<GAME>/scripts.
 
-usage: rendertest.py [--scripts arcade_00_japan versus ...] [--every 20] [--jobs 10] [--keep]
+usage: rendertest.py [--scripts arcade_00_japan versus ...] [--every 20] [--jobs N] [--keep]
 Exit status 0 only if every comparison passes.
 """
 import argparse
@@ -103,7 +103,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--scripts', nargs='*', default=DEFAULT_SCRIPTS)
     ap.add_argument('--every', type=int, default=20, help='screenshot interval in frames')
-    ap.add_argument('--jobs', type=int, default=10)
+    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) // 2))   # never all cores
     ap.add_argument('--hd-tolerance', type=float, default=0.0, help='share of pixels allowed to differ at 2x')
     ap.add_argument('--keep', action='store_true', help='keep the screenshots')
     a = ap.parse_args()

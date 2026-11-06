@@ -11,7 +11,7 @@ BIOS's calls into the game (USER, PLAYER_START, DEMO_END, COIN_SOUND, SYSTEM_RET
 Level 3 draws the eye-catcher black, so screenshots before the first USER(2) and during eye-catchers are
 not compared.
 
-usage: biostest.py [--level 3] [--scripts arcade_00_japan versus ...] [--all] [--every 20] [--jobs 10]
+usage: biostest.py [--level 3] [--scripts arcade_00_japan versus ...] [--all] [--every 20] [--jobs N]
 Exit status 0 only if every script matches.
 """
 import argparse
@@ -127,7 +127,7 @@ def main():
     ap.add_argument('--scripts', nargs='*', default=DEFAULT)
     ap.add_argument('--all', action='store_true', help='every script in games/<GAME>/scripts')
     ap.add_argument('--every', type=int, default=20)
-    ap.add_argument('--jobs', type=int, default=10)
+    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) // 2))   # never all cores
     ap.add_argument('--keep', action='store_true')
     ap.add_argument('--args', default='', help='more emulator options for both runs, e.g. "--aes"')
     a = ap.parse_args()

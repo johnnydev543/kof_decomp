@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """ogg_audio.py - compress the exported sounds (export_audio.py) to Ogg Vorbis for the web build.
 
-The WAVs are ~820 MB; as Vorbis (quality 4, same 55555 Hz rate) they are ~65 MB. The native mixer
+The WAVs are ~820 MB; as Vorbis (quality 4, same 55555 Hz rate) they are ~50 MB. The native mixer
 (src/snd_native.c) loads <name>.ogg wherever <name>.wav is missing, so OUT holds only commands.txt and the
 .ogg files. Vorbis keeps the exact sample count, so the loop points in commands.txt still apply.
 Files already up to date are skipped. Derived from the ROM: keep them local, never publish them.
 
-usage: ogg_audio.py [--src build/assets/<GAME>/audio] [--out build/assets/<GAME>/audio_ogg] [--quality 4] [--jobs 10]
+usage: ogg_audio.py [--src build/assets/<GAME>/audio] [--out build/assets/<GAME>/audio_ogg] [--quality 4] [--jobs N]
 """
 import argparse
 import os
@@ -34,7 +34,7 @@ def main():
     ap.add_argument('--src', default=os.path.join(game.ROOT, 'build/assets', game.NAME, 'audio'))
     ap.add_argument('--out', default=os.path.join(game.ROOT, 'build/assets', game.NAME, 'audio_ogg'))
     ap.add_argument('--quality', type=int, default=4)
-    ap.add_argument('--jobs', type=int, default=10)
+    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) // 2))   # never all cores
     a = ap.parse_args()
     if not os.path.exists(os.path.join(a.src, 'commands.txt')):
         sys.exit('%s/commands.txt missing: run `make assets` first' % a.src)

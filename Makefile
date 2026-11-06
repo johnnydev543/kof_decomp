@@ -171,7 +171,9 @@ web: $(RC_C) $(MUSASHI)/m68kops.c $(B)/roms/p1.bin
 	  echo "           cd $(EMSDK) && ./emsdk install latest && ./emsdk activate latest"; \
 	  echo "  or point to an existing one: make web EMSDK=/path/to/emsdk"; exit 1; }
 	bash -c 'source $(EMSDK)/emsdk_env.sh >/dev/null && command -v emcc >/dev/null || { echo "emcc not found after sourcing $(EMSDK)/emsdk_env.sh (./emsdk activate latest?)"; exit 1; }; $(MAKE) -f web.mk -j$(WEB_JOBS) $(if $(MODS),MODS=$(MODS))'
-WEB_JOBS ?= 10
+# half the host's cores (it runs other things too); override with make web WEB_JOBS=N
+NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
+WEB_JOBS ?= $(shell n=$$(( $(NPROC) / 2 )); [ $$n -ge 1 ] && echo $$n || echo 1)
 WEB_PORT ?= 8097
 serve: web
 	python3 tools/web/serve.py --port $(WEB_PORT) --dir $(B)/web
