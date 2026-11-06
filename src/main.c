@@ -229,8 +229,52 @@ static void script_input(int frame, uint8_t *p1, uint8_t *p2, uint8_t *sys)
 static int use_gpu;
 static int bios_level;
 static const char *bios_timing, *soft_dip;
-#define AUDIO_QUEUE_MAX (AUDIO_RATE * 50 / 1000)   /* 50 ms (3 frames) */
-#define AUDIO_QUEUE_KEEP (AUDIO_RATE * 34 / 1000)  /* 34 ms (2 frames) */
+/* Sound latency: dynamic rate control. The game makes 55555 Hz audio at its own pace and the sound card plays
+   at its own; instead of dropping or repeating audio, each frame's samples are stretched by at most 0.5% (not
+   audible) so the queue stays near AUDIO_TARGET: low delay, no gaps. The browser's frame pacing jitters more,
+   so it keeps more. */
+#ifdef __EMSCRIPTEN__
+#define AUDIO_TARGET (AUDIO_RATE * 60 / 1000)
+#else
+#define AUDIO_TARGET (AUDIO_RATE * 40 / 1000)
+#endif
+static int16_t drc_buf[8400 * 2];
+static double drc_pos;                 /* read position between the previous sample (0) and the next */
+static double drc_integ;               /* learned steady rate difference (clock drift) */
+static int16_t drc_last[2];
+
+static int drc_resample(const int16_t *in, int n, int queued, int16_t *out)
+{
+    double err = (double)(queued - AUDIO_TARGET) / AUDIO_TARGET;
+    if (err > 1) err = 1;
+    if (err < -1) err = -1;
+    /* proportional + integral: the integral learns a steady clock difference so the queue settles at the
+       target; > 1: fewer samples out, the queue shrinks; at most 0.6% */
+    drc_integ += 0.00005 * err;
+    if (drc_integ > 0.004) drc_integ = 0.004;
+    if (drc_integ < -0.004) drc_integ = -0.004;
+    double adj = 0.003 * err + drc_integ;
+    if (adj > 0.006) adj = 0.006;
+    if (adj < -0.006) adj = -0.006;
+    double step = 1.0 + adj;
+    int m = 0;
+    while (m < 8400) {
+        int i = (int)drc_pos;          /* sample i of in[-1 .. n-1], in[-1] = drc_last */
+        if (i >= n) break;
+        double f = drc_pos - i;
+        for (int c = 0; c < 2; c++) {
+            double a = i == 0 ? drc_last[c] : in[2 * (i - 1) + c], b = in[2 * i + c];
+            out[2 * m + c] = (int16_t)(a + (b - a) * f);
+        }
+        m++;
+        drc_pos += step;
+    }
+    drc_pos -= n;
+    drc_last[0] = in[2 * (n - 1)];
+    drc_last[1] = in[2 * (n - 1) + 1];
+    return m;
+}
+
 static int web_worklet;          /* web page with an AudioWorklet: audio goes to Module.audioPush */
 
 static void write_ppm_buf(const char *path, const uint32_t *fb, int w, int h)
@@ -509,16 +553,11 @@ static void frame_step(void)
             if (web_worklet) EM_ASM({ Module.audioPush(HEAP16.subarray($0 >> 1, ($0 >> 1) + $1 * 2)); }, abuf, n);
 #endif
             if (ui.adev) {
-                /* keep latency low: the queue holds at most AUDIO_QUEUE_MAX frames; what would go beyond is
-                   dropped down to AUDIO_QUEUE_KEEP (it builds up while the browser waits for a click before
-                   it plays sound, and would otherwise stay as a constant delay) */
                 int queued = (int)(SDL_GetQueuedAudioSize(ui.adev) / 4);
-                if (queued + n > AUDIO_QUEUE_MAX) {
-                    int drop = queued + n - AUDIO_QUEUE_KEEP;
-                    if (drop >= n) n = 0;
-                    else { memmove(abuf, abuf + 2 * drop, (size_t)(n - drop) * 4); n -= drop; }
-                }
-                if (n > 0) SDL_QueueAudio(ui.adev, abuf, (Uint32)n * 4);
+                if (queued > 4 * AUDIO_TARGET) SDL_ClearQueuedAudio(ui.adev);   /* e.g. built up before the browser
+                                                                                  allowed sound: start over once */
+                int m = drc_resample(abuf, n, queued, drc_buf);
+                if (m > 0) SDL_QueueAudio(ui.adev, drc_buf, (Uint32)m * 4);
             }
         }
     }
