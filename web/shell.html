@@ -233,7 +233,7 @@
   })();
   /* Audio through an AudioWorklet (off the main thread) where the browser allows it: secure contexts only
      (https or localhost; a plain-http LAN address keeps SDL's ScriptProcessor). The game hands each frame's
-     samples (55555 Hz stereo) to Module.audioPush; the worklet keeps up to ~150 ms and resamples linearly to
+     samples (55555 Hz stereo) to Module.audioPush; the worklet keeps up to ~60 ms and resamples linearly to
      the device rate. ?worklet=0 keeps SDL's audio. */
   (function () {
     if (!window.isSecureContext || typeof AudioWorkletNode === 'undefined' ||
@@ -244,7 +244,7 @@
       '    this.step = 55555 / sampleRate;',
       '    this.port.onmessage = (e) => { const d = e.data, N = 65536;',
       '      for (let i = 0; i < d.length; i += 2) { const k = (this.w % N) * 2; this.buf[k] = d[i]; this.buf[k + 1] = d[i + 1]; this.w++; }',
-      '      if (this.w - this.r > 55555 * 0.15) this.r = this.w - 55555 * 0.05; }; }',
+      '      if (this.w - this.r > 55555 * 0.06) this.r = this.w - 55555 * 0.03; }; }',
       '  process(inputs, outputs) { const L = outputs[0][0], R = outputs[0][1] || outputs[0][0], N = 65536;',
       '    for (let i = 0; i < L.length; i++) {',
       '      if (this.r + 1 >= this.w) { L[i] = R[i] = 0; continue; }',

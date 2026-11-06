@@ -229,6 +229,8 @@ static void script_input(int frame, uint8_t *p1, uint8_t *p2, uint8_t *sys)
 static int use_gpu;
 static int bios_level;
 static const char *bios_timing, *soft_dip;
+#define AUDIO_QUEUE_MAX (AUDIO_RATE * 50 / 1000)   /* 50 ms (3 frames) */
+#define AUDIO_QUEUE_KEEP (AUDIO_RATE * 34 / 1000)  /* 34 ms (2 frames) */
 static int web_worklet;          /* web page with an AudioWorklet: audio goes to Module.audioPush */
 
 static void write_ppm_buf(const char *path, const uint32_t *fb, int w, int h)
@@ -507,9 +509,16 @@ static void frame_step(void)
             if (web_worklet) EM_ASM({ Module.audioPush(HEAP16.subarray($0 >> 1, ($0 >> 1) + $1 * 2)); }, abuf, n);
 #endif
             if (ui.adev) {
-                /* keep latency bounded: drop audio if the queue grows beyond ~150 ms */
-                if (SDL_GetQueuedAudioSize(ui.adev) > (Uint32)(AUDIO_RATE * 4 * 15 / 100)) SDL_ClearQueuedAudio(ui.adev);
-                SDL_QueueAudio(ui.adev, abuf, (Uint32)n * 4);
+                /* keep latency low: the queue holds at most AUDIO_QUEUE_MAX frames; what would go beyond is
+                   dropped down to AUDIO_QUEUE_KEEP (it builds up while the browser waits for a click before
+                   it plays sound, and would otherwise stay as a constant delay) */
+                int queued = (int)(SDL_GetQueuedAudioSize(ui.adev) / 4);
+                if (queued + n > AUDIO_QUEUE_MAX) {
+                    int drop = queued + n - AUDIO_QUEUE_KEEP;
+                    if (drop >= n) n = 0;
+                    else { memmove(abuf, abuf + 2 * drop, (size_t)(n - drop) * 4); n -= drop; }
+                }
+                if (n > 0) SDL_QueueAudio(ui.adev, abuf, (Uint32)n * 4);
             }
         }
     }
@@ -542,6 +551,9 @@ static void web_save_nvram(void)
     last = h;
     EM_ASM({ if (Module.saveNvram) Module.saveNvram(HEAPU8.subarray($0, $0 + $1)); }, ng.backup, (int)sizeof ng.backup);
 }
+
+/* frames of sound waiting in SDL's queue (latency check) */
+EMSCRIPTEN_KEEPALIVE int kof_audio_queued(void) { return ui.adev ? (int)(SDL_GetQueuedAudioSize(ui.adev) / 4) : -1; }
 
 /* browser animation frames come at the display rate: run as many 59.185 Hz game frames as are due */
 static void web_tick(void)
@@ -726,7 +738,12 @@ int main(int argc, char **argv)
     }
 
     SDL_AudioSpec want = { 0 }, have;
-    want.freq = AUDIO_RATE; want.format = AUDIO_S16SYS; want.channels = 2; want.samples = 1024;
+    want.freq = AUDIO_RATE; want.format = AUDIO_S16SYS; want.channels = 2;
+#ifdef __EMSCRIPTEN__
+    want.samples = 1024;                         /* browsers crackle with smaller ScriptProcessor buffers */
+#else
+    want.samples = 512;                          /* ~9 ms device buffer */
+#endif
     SDL_AudioDeviceID adev = 0;
 #ifdef __EMSCRIPTEN__
     web_worklet = EM_ASM_INT({ return Module.audioPush ? 1 : 0; });   /* the page plays it (AudioWorklet) */
